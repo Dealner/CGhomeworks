@@ -1,0 +1,134 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1" />
+<title>computer_graphic_HW1</title>
+<style type="text/css">
+
+      #info {
+              position: absolute;
+              top: 5%;
+              width: 100%;
+              padding: 10px;
+              text-align: center;
+              float: left;
+              color: #ffff00
+      }
+      body {
+              overflow: hidden;
+      }
+
+</style>
+</head>
+<body> 
+  <div id="info">
+       <br/>HomeWork1<br/><br/> 
+       <button id="toggle" style="width: 10%">Toggle Turn</button>
+       <button id="quartz" style="width: 10%">Quartz</button>
+  </div>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r70/three.min.js"></script>
+  <script src="https://dl.dropboxusercontent.com/u/3587259/Code/Threejs/OrbitControls.js"></script>
+  <script src="https://code.jquery.com/jquery-2.1.4.min.js"></script>
+  <script language="javascript" type="text/javascript">
+
+    var clock = new THREE.Clock();
+    var scene, renderer, camera;
+    var controls, radius = 0;
+    var hand, turn = false;
+    var circle, quartzMode = false;
+
+    init();
+    Second_Hand_animate();
+
+    $("#toggle").click(function() {
+      turn = !turn;
+    });
+    $("#quartz").click(function() {
+      quartzMode = !quartzMode;
+    });
+
+    function init() {
+      scene = new THREE.Scene();
+      renderer = new THREE.WebGLRenderer();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      renderer.setClearColor(0x888888);
+      document.body.appendChild(renderer.domElement);
+
+      camera = new THREE.PerspectiveCamera(30, window.innerWidth / window.innerHeight, 1, 10000);
+      camera.position.z = 500;
+      controls = new THREE.OrbitControls(camera, renderer.domElement);
+      //秒針
+      var second_hand = function() {
+        var frame = new THREE.Object3D();
+        var geometry = new THREE.CylinderGeometry(5, 5, 50);
+        var material = new THREE.MeshBasicMaterial({
+          color: 0x99c7f4
+        });
+        var mesh = new THREE.Mesh(geometry, material);
+        mesh.position.set(0, 25, 0);
+        frame.add(mesh);
+
+        geometry = new THREE.CylinderGeometry(0, 8, 30);
+        material = new THREE.MeshBasicMaterial({
+          color: 0xD4D4D4
+        });
+        mesh = new THREE.Mesh(geometry, material);
+        mesh.position.set(0, 65, 0);
+        frame.add(mesh);
+        return frame;
+      };
+      hand = second_hand();
+      scene.add(hand);
+      //外環
+      var geometry = new THREE.TorusGeometry(85, 3, 20, 100);
+      var material = new THREE.MeshBasicMaterial({
+        color: 0xFFFF3B
+      });
+      var torus = new THREE.Mesh(geometry, material);
+      scene.add(torus);
+      //XZ平面
+      /*var gridXZ = new THREE.GridHelper(100, 10);
+        gridXZ.setColors(new THREE.Color(0xff0000), new  THREE.Color(0xffffff));
+        scene.add(gridXZ);*/
+      window.addEventListener('resize', onWindowResize, false);
+    }
+
+    function onWindowResize() {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    }
+
+    function DrawCircle() {
+      scene.remove(circle); //移除場景物件
+      var radiusC = radius % (2 * Math.PI);//2PI清空
+      var geometry = new THREE.CircleGeometry(85, 40, Math.PI / 2, -radiusC);
+      var material = new THREE.MeshBasicMaterial({
+        side: THREE.DoubleSide
+      });
+      circle = new THREE.Mesh(geometry, material);
+      scene.add(circle);
+    }
+
+    function Second_Hand_animate() {
+      var dt = clock.getDelta();
+      controls.update();
+      if (turn) {
+      	  radius += Math.PI / 30 * dt;
+          if (quartzMode) {
+              var angle = Math.floor(radius * 180 / Math.PI / 6) * 6;
+              //console.log('angle is ' + angle+' radius is '+radius);
+              hand.rotation.z = -angle * Math.PI / 180;
+          } 
+          else
+          	  hand.rotation.z = -radius;
+      }
+      DrawCircle();
+
+      requestAnimationFrame(Second_Hand_animate);
+      renderer.render(scene, camera);
+    }
+
+  </script>
+</body>
+</html>

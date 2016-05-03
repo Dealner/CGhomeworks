@@ -1,0 +1,405 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1" />
+<title>computer_graphic_HW2</title>
+<style type="text/css">
+
+      #info {
+              position: absolute;
+              top: 5%;
+              width: 100%;
+              padding: 10px;
+              text-align: center;
+              float: left;
+              color: #ffff00
+      }
+      body {
+              overflow: hidden;
+      }
+
+</style>
+</head>
+<body> 
+  <div id="info">
+       <br/>HomeWork2_DanboardMini<br/><br/>
+  </div>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r70/three.min.js"></script>
+  <script src="//cdnjs.cloudflare.com/ajax/libs/dat-gui/0.5.1/dat.gui.min.js"></script>
+  <script src="https://dl.dropboxusercontent.com/u/3587259/Code/Threejs/OrbitControls.js"></script>
+  <script src="https://code.jquery.com/jquery-2.1.4.min.js"></script>
+  <script src="https://jyunming-chen.github.io/tutsplus/js/KeyboardState.js"></script>
+  <script language="javascript" type="text/javascript">
+    
+    var jointRadius = 4;
+    var skirtAngle = 0;
+    var walkRadius = 0;
+    var camera3rd;
+    var keyboard = new KeyboardState();
+    var scene, camera, Render, controls;
+    
+    Control_elements = {
+       L_ArmAngleX : 0.8,
+       R_ArmAngleX : 0.8,
+       L_ArmAngleZ : 0.8,
+       R_ArmAngleZ : 0.8,
+       L_LegAngleX : 0.8,
+       R_LegAngleX : 0.8,
+       L_LegAngleZ : 1.5,
+       R_LegAngleZ : 1.5,
+       way : 1,
+       speed : 0.05
+    };
+    function loadJSON(){
+       return{
+            "preset": "1",
+            "remembered": {
+               "pose1": {
+                 "0": {
+                        "way": "1",
+                        "L_ArmAngleX": 0.46,
+                        "R_ArmAngleX": 0.46,
+                        "L_ArmAngleZ": 0.6719454061210528,
+                        "R_ArmAngleZ": 2.306318860282844,
+                        "L_LegAngleX": 0.46,
+                        "R_LegAngleX": -0.46,
+                        "L_LegAngleZ": 1.5,
+                        "R_LegAngleZ": 1.5,
+                 }
+               },
+               "pose2": {
+                 "0": {
+                        "L_ArmAngleX": 1.3626368261792745,
+                        "R_ArmAngleX": -1.3399008616821662,
+                        "L_ArmAngleZ": 1.154749311728394,
+                        "R_ArmAngleZ": 1.9170035313816207,
+                        "L_LegAngleX": 0.46,
+                        "R_LegAngleX": -0.46,
+                        "L_LegAngleZ": 1.5,
+                        "R_LegAngleZ": 1.5,
+        	            "way": "1"
+                 }
+               },
+               "pose3": {
+                 "0": {
+                        "L_ArmAngleX": -0.46,
+                        "R_ArmAngleX": -0.16187161312717935,
+                        "L_ArmAngleZ": 0.2539034157745803,
+                        "R_ArmAngleZ": 3.0950327799366075,
+                        "L_LegAngleX": 0.037177184993365864,
+                        "R_LegAngleX": -0.0034087076591537424,
+                        "L_LegAngleZ": 1.1,
+                        "R_LegAngleZ": 2.1,
+       		            "way": "1"
+                 }
+               }
+          },
+          "closed": false,
+          "folders": {}
+       }
+
+    }
+    var gui = new dat.GUI({ load: loadJSON() ,preset: 'pose1'});
+    gui.remember(Control_elements);
+
+    var controller = gui.add (
+    	Control_elements, 'way', { show_3_pose: 1, walkAround: 2 } );
+
+    controller.onChange(function(value) {
+       // Fires on every change, drag, keypress, etc.
+    });
+    controller.onFinishChange(function(value) {
+       // Fires when a controller loses focus.
+       if( value == 1 ) {
+  	       $(armFolder.domElement).attr("hidden", false);
+           $(legFolder.domElement).attr("hidden", false);
+       }
+       else {
+  	       $(armFolder.domElement).attr("hidden", true);
+           $(legFolder.domElement).attr("hidden", true);
+       }
+       if( value == 2 || value == 3 ) 
+  	       $(aboutWalk.domElement).attr("hidden", false);   
+       else
+  	       $(aboutWalk.domElement).attr("hidden", true);
+    });
+    var armFolder = gui.addFolder('Arm Part');
+    armFolder.add(Control_elements, 'L_ArmAngleX', -Math.PI, Math.PI);
+    armFolder.add(Control_elements, 'R_ArmAngleX', -Math.PI, Math.PI);
+    armFolder.add(Control_elements, 'L_ArmAngleZ', -Math.PI, Math.PI);
+    armFolder.add(Control_elements, 'R_ArmAngleZ', -Math.PI, Math.PI);
+    var legFolder = gui.addFolder('Leg Part');
+    legFolder.add(Control_elements, 'L_LegAngleX', -0.5, 0.5);
+    legFolder.add(Control_elements, 'R_LegAngleX', -0.5, 0.5);
+    legFolder.add(Control_elements, 'L_LegAngleZ', 1.1, 1.6);
+    legFolder.add(Control_elements, 'R_LegAngleZ', 1.4, 2.1);
+
+    var aboutWalk = gui.addFolder('aboutWalk');
+    aboutWalk.add(Control_elements, 'speed', 0, 0.1);
+    $(aboutWalk.domElement).attr("hidden", true);
+
+    init();
+    animate();
+   
+    function init() {
+         scene = new THREE.Scene();
+         camera3rd = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 1, 5000);
+         camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 1, 10000);
+         camera.position.z = 500;
+         scene.add(camera3rd);
+         scene.add(camera);
+  
+         var gridXZ = new THREE.GridHelper(200, 10);
+         gridXZ.setColors(new THREE.Color(0xff0000), new THREE.Color(0xffffff));
+         scene.add(gridXZ);
+
+         Render = new THREE.WebGLRenderer();
+         Render.setSize(window.innerWidth, window.innerHeight);
+         Render.setClearColor(0x888888);
+
+         controls = new THREE.OrbitControls(camera, Render.domElement);
+         document.body.appendChild(Render.domElement);
+         //scene spot light
+         var light = new THREE.PointLight(0xffffff, 1);
+         light.position.set(150, 150, 150);
+         scene.add(light);
+         var amblight = new THREE.AmbientLight(0x404040); // soft white light
+         scene.add(amblight);
+         //part of body
+         frame = new THREE.Object3D();
+         robotFrame = new THREE.Object3D();
+         var head = function() {            
+            //texture
+            THREE.ImageUtils.crossOrigin = '';
+            var materials = [];
+            for(var i = 0; i < 6; i++) {  	
+                var texture = null; 
+             	if( i === 0 )
+             	 	texture = THREE.ImageUtils.loadTexture('http://i.imgur.com/pBkPnxV.jpg');           
+             	else if( i === 1 )
+             	 	texture = THREE.ImageUtils.loadTexture('http://i.imgur.com/WQUFckW.jpg'); 	    
+             	else if( i === 2 )
+             	 	texture = THREE.ImageUtils.loadTexture('http://i.imgur.com/Gp11s37.jpg');
+             	else if( i === 4 )
+             	 	texture = THREE.ImageUtils.loadTexture('http://i.imgur.com/GAf4W1u.jpg');
+             	else if( i === 5 )
+             	 	texture = THREE.ImageUtils.loadTexture('http://i.imgur.com/CDjx9Zs.jpg');
+
+             	materials.push( new THREE.MeshLambertMaterial({side:THREE.DoubleSide, map:texture}));
+             }
+             //head 
+             var geometry = new THREE.BoxGeometry(70, 40, 40);
+             var material = new THREE.MeshFaceMaterial( materials );
+             var head = new THREE.Mesh(geometry, material);
+             head.position.set(0, 110, 0);
+             return head;
+         }
+         var body = function() {
+         	 //texture
+             THREE.ImageUtils.crossOrigin = '';
+             var materials = [];
+             for(var i = 0; i < 6; i++) {  	
+                 var texture = null; 
+             	 if( i === 0 )
+             	 	 texture = THREE.ImageUtils.loadTexture('http://i.imgur.com/RvdELZp.jpg');          
+             	 else if( i === 1 )
+             	 	 texture = THREE.ImageUtils.loadTexture('http://i.imgur.com/QgX9g6z.jpg');
+             	 else if( i === 4 )
+             	 	 texture = THREE.ImageUtils.loadTexture('http://i.imgur.com/cUaCSJo.jpg');
+             	 else if( i === 5 )
+             	 	 texture = THREE.ImageUtils.loadTexture('http://i.imgur.com/WHGylt8.jpg');
+
+             	 materials.push( new THREE.MeshLambertMaterial({side:THREE.DoubleSide, map:texture}));
+             }
+             //body
+         	 var bodyframe = new THREE.Object3D();
+             var bodyX = 40, bodyY = 50, bodyZ = 20;
+             var geometry = new THREE.BoxGeometry(bodyX, bodyY, bodyZ);
+             var material = new THREE.MeshFaceMaterial( materials );
+             var body_mesh = new THREE.Mesh(geometry, material);
+             body_mesh.position.set(0, 70, 0);
+             //skirt
+             skirtFrame1 = makeSkirt( bodyX , bodyZ );
+             skirtFrame1.position.set( 0 ,45, bodyZ * 0.8 );
+             skirtFrame2 = makeSkirt( bodyZ * 2 , bodyZ );
+             skirtFrame2.position.set( 20 , 45 , 0 );
+             skirtFrame3 = makeSkirt( bodyX , bodyZ );
+             skirtFrame3.position.set( 0 , 45 , -bodyZ * 0.8 );
+             skirtFrame4 = makeSkirt( bodyZ * 2 , bodyZ );
+             skirtFrame4.position.set( -20 , 45 , 0 );
+
+             bodyframe.add(body_mesh);
+             bodyframe.add(skirtFrame1);
+             bodyframe.add(skirtFrame2);
+             bodyframe.add(skirtFrame3);
+             bodyframe.add(skirtFrame4);
+             return bodyframe;
+         }
+         var arm = function(){
+         	//texture
+             THREE.ImageUtils.crossOrigin = '';
+             var materials = [];
+             for(var i = 0; i < 6; i++) {  	
+                 var texture = null; 
+             	 if( i === 0 || i === 1 )
+             	 	 texture = THREE.ImageUtils.loadTexture('http://i.imgur.com/34hsqru.jpg');          
+             	 else if( i === 2 )
+             	 	 texture = THREE.ImageUtils.loadTexture('http://i.imgur.com/mgS9rKP.jpg');
+             	 else if( i === 3 )
+             	 	 texture = THREE.ImageUtils.loadTexture('http://i.imgur.com/6aa1ZDy.jpg');
+             	 else if( i === 4 || i === 5 )
+             	 	 texture = THREE.ImageUtils.loadTexture('http://i.imgur.com/JkrAQQE.jpg');
+
+             	 materials.push( new THREE.MeshLambertMaterial({side:THREE.DoubleSide, map:texture}));
+             }
+             //arm
+             var geometry = new THREE.BoxGeometry(12, 40, 14);
+             var material = new THREE.MeshFaceMaterial( materials );
+             var arm_mesh = new THREE.Mesh(geometry, material);
+             arm_mesh.position.x = -20 - jointRadius;//joint有旋轉，所以座標軸從y變成x
+             return arm_mesh;
+         }
+         var leg = function(){
+         	 //texture
+         	 THREE.ImageUtils.crossOrigin = '';
+             var materials = [];
+             for(var i = 0; i < 6; i++) {  	
+                 var texture = null; 
+             	 if( i === 0 || i === 1 )
+             	 	 texture = THREE.ImageUtils.loadTexture('http://i.imgur.com/CWuIzeC.jpg');          
+             	 else if( i === 4 || i === 5 )
+             	 	 texture = THREE.ImageUtils.loadTexture('http://i.imgur.com/1YR6aeZ.jpg');
+
+             	 materials.push( new THREE.MeshLambertMaterial({side:THREE.DoubleSide, map:texture}));
+             }
+         	 //leg
+             var geometry = new THREE.BoxGeometry(15, 40, 30);
+             var material = new THREE.MeshFaceMaterial( materials );
+             var leg_mesh = new THREE.Mesh(geometry, material);
+             leg_mesh.position.x = -20 -jointRadius;
+             return leg_mesh;
+         }
+         //form the robot
+         robotFrame.add( head() );
+         robotFrame.add( body() );
+         //generate arms and arms joint
+         var leftArm = arm() , rightArm = arm();
+         armJointRight = makeJoint(rightArm, 25, 90, 0);
+         armJointRight.rotation.z = Math.PI - (Math.PI / 3);
+         armJointLeft = makeJoint(leftArm, -25, 90, 0);
+         armJointLeft.rotation.z = (Math.PI / 3);
+         //generate legs and legs joint
+         var leftLeg = leg() , rightLeg = leg();
+         legJointRight = makeJoint(rightLeg, 9, 45, 0);
+         legJointLeft = makeJoint(leftLeg, -9, 45, 0);
+         robotFrame.add(legJointLeft);
+         robotFrame.add(legJointRight);
+         robotFrame.add(armJointLeft);
+         robotFrame.add(armJointRight);
+         frame.add( robotFrame );
+         scene.add( frame );
+
+         var onWindowResize = function() {
+        	Render.setViewport (0, 0, window.innerWidth, window.innerHeight);
+	        Render.setSize(window.innerWidth, window.innerHeight);
+         }
+         onWindowResize();
+    }
+    //joint
+    function makeJoint( part, x, y, z ) {
+    	 THREE.ImageUtils.crossOrigin = '';
+         var lidMap = 'http://i.imgur.com/mgS9rKP.jpg';
+         var text = THREE.ImageUtils.loadTexture(lidMap);
+  
+         var jointGeometry = new THREE.SphereGeometry( jointRadius, 32, 32 );
+         var jointMaterial = new THREE.MeshBasicMaterial({map: text});
+
+         Joint = new THREE.Mesh( jointGeometry, jointMaterial );
+         Joint.rotation.z = Math.PI/2;
+         part.rotation.z = -Math.PI/2;
+         Joint.add( part );
+         Joint.position.set( x, y, z );
+         return Joint;
+    }
+    //skirt 
+    function makeSkirt( x , y ) {
+    	THREE.ImageUtils.crossOrigin = '';
+    	var lidMap = 'http://i.imgur.com/mgS9rKP.jpg';
+        var text = THREE.ImageUtils.loadTexture(lidMap);
+
+        var lid = new THREE.Object3D();
+        var lidPlane = new THREE.Mesh(new THREE.PlaneGeometry(x, y),
+            new THREE.MeshLambertMaterial({
+                  side: THREE.DoubleSide,
+                  map: text
+            })
+        );    
+        lidPlane.rotation.x = -Math.PI / 2;
+        lid.add(lidPlane); 
+        return lid;
+    }
+    function animate() {
+    	this.whichCamera = this.whichCamera || 0;
+        controls.update();
+        //set skirt angle
+        animate.cos = (animate.cos === undefined) ? -1 : animate.cos;
+        if (skirtAngle < 0 || skirtAngle > Math.PI / 18 + Math.PI / 6) animate.cos *= -1;  
+        skirtAngle += animate.cos * 0.01;
+	
+        skirtFrame1.rotation.x = skirtAngle;
+        skirtFrame2.rotation.z = -skirtAngle;
+        skirtFrame3.rotation.x = -skirtAngle;
+        skirtFrame4.rotation.z = skirtAngle;
+      
+        if( Control_elements.way == 1 ) {
+        	robotFrame.position.set(0, 0, 0);
+            robotFrame.rotation.y = 0;
+            frame.rotation.y = 0;
+
+            legJointRight.rotation.x = Control_elements.R_LegAngleX;
+            legJointLeft.rotation.x = Control_elements.L_LegAngleX;
+            legJointRight.rotation.z = Control_elements.R_LegAngleZ;
+            legJointLeft.rotation.z = Control_elements.L_LegAngleZ;
+
+            armJointRight.rotation.x = Control_elements.R_ArmAngleX;
+            armJointLeft.rotation.x = Control_elements.L_ArmAngleX;
+            armJointRight.rotation.z = Control_elements.R_ArmAngleZ;
+            armJointLeft.rotation.z = Control_elements.L_ArmAngleZ;
+	    }
+	    if( Control_elements.way == 2 ) {    
+	    	animate.sin = (animate.sin === undefined) ? 1 : animate.sin;
+	    	if( walkRadius > Math.PI / 18 || walkRadius < -Math.PI / 18 ) animate.sin *= -1;       
+            walkRadius += animate.sin * Control_elements.speed * 0.85; 
+
+            legJointRight.rotation.x = walkRadius * 2.5;
+            legJointLeft.rotation.x = walkRadius * -2.5;
+            armJointRight.rotation.x = walkRadius * -5;
+            armJointLeft.rotation.x = walkRadius * 5;
+    
+            legJointRight.rotation.z = Math.PI / 2;
+            legJointLeft.rotation.z = Math.PI / 2;
+            armJointRight.rotation.z = Math.PI - Math.PI / 4;
+            armJointLeft.rotation.z = Math.PI / 4;
+
+            robotFrame.position.set(100, 0, 100);     
+            robotFrame.rotation.y = -Math.PI / 3; 
+            frame.rotation.y += -Control_elements.speed;
+        
+            keyboard.update();
+    	    if (keyboard.down("enter")) whichCamera = (whichCamera + 1) % 2;
+    	    if( whichCamera == 1 ) {
+                var cameraOffset = frame.localToWorld(new THREE.Vector3(250, 200, 200));
+                camera3rd.position.copy(cameraOffset);
+                camera3rd.lookAt(frame.position);
+            }
+	    }
+        requestAnimationFrame(animate);
+        if( whichCamera == 0 )
+            Render.render(scene, camera);
+        else if( whichCamera == 1 )
+            Render.render(scene, camera3rd);
+    }
+
+  </script>
+</body>
+</html>
