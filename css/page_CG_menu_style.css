@@ -7,6 +7,7 @@
 }
 div#menu
 {
+    z-index: 1;
     position: absolute;
     width: 65px;
     height: 100%;
@@ -63,10 +64,24 @@ div.logo-interior p a:hover
 }
 div#content
 {
-	width: 1360px;
+	width: 100%; 
+    height: 100%;
+    position: absolute;
 	float: left;
+    display: block;
 	margin-left: 65px;
-	display:block;
+}
+div#content #slogan
+{
+    font-size : 50px; 
+    margin-top: 25%;
+    text-align: center;
+}
+div#content #hw_demo
+{
+    overflow: hidden; 
+    width: 100%; 
+    height: 100%;
 }
 /*div#load_screen
 {

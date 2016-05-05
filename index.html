@@ -2,45 +2,63 @@
 <html lang="en">
 <head>
 	<meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=0.5 maximum-scale=15.0 minimum-scale=0.5">
+    <meta name="viewport" content="width=device-width, initial-scale=0.5 maximum-scale=10.0 minimum-scale=0.5">
 	  <title>CG HomeWorks</title>
-    <link rel="stylesheet" type="text/css" href="css/page_PHP_practice_style.css">
+    <link rel="stylesheet" type="text/css" href="css/page_CG_menu_style.css">
+    <script type="text/javascript">
+
+      var emptyIndex = true; 
+    
+      function goToPage(newPage){
+         if(emptyIndex){
+            var slo = document.getElementById("slogan");
+            slo.parentNode.removeChild(slo);
+            emptyIndex = false;
+         }
+         document.getElementById("hw_demo").src = newPage;
+      }
+
+    </script>
 </head>
 <body>
       <div id="menu">
            <div id="logo-principal"><p>Works</p></div>
            <div id="contenedor-general-frame">
                 <div class="contenedor-general">
-                     <div class="logo-interior">
-                         <p><a href="pages/HW1.html" style="text-decoration:none;">Project_01</a></p>
-                     </div> 
+                  <div class="logo-interior">
+                    <p><a href="javascript: goToPage('pages/HW1.html');" style="text-decoration:none;">
+                        Project_01</a></p>
+                  </div> 
                 </div>
                 <div class="contenedor-general">
-                     <div class="logo-interior">
-                         <p><a href="pages/HW2.html" style="text-decoration:none;">Project_02</a></p>
-                     </div>
+                  <div class="logo-interior">
+                    <p><a href="javascript: goToPage('pages/HW2.html');" style="text-decoration:none;">
+                        Project_02</a></p>
+                  </div>
                 </div>
                 <div class="contenedor-general">
-                     <div class="logo-interior">
-                         <p><a href="pages/HW3.html" style="text-decoration:none;">Project_03</a></p>
-                     </div>
+                  <div class="logo-interior">
+                    <p><a href="javascript: goToPage('pages/HW3.html');" style="text-decoration:none;">
+                        Project_03</a></p>
+                  </div>
                 </div>
                 <div class="contenedor-general">
-                     <div class="logo-interior">
-                         <p><a href="#" style="text-decoration:none;">Project_04</a></p>
-                    </div>   
+                  <div class="logo-interior">
+                    <p><a href="javascript: void(0);" style="text-decoration:none;">
+                        Project_04</a></p>
+                  </div>   
                </div>
                <div class="contenedor-general">
-                    <div class="logo-interior">
-                         <p><a href="#" style="text-decoration:none;">Project_05</a></p>
-                    </div>
+                  <div class="logo-interior">
+                    <p><a href="javascript: void(0);" style="text-decoration:none;">
+                        Project_05</a></p>
+                  </div>
                </div>
            </div>
       </div>
       <div id="content">
-         <p align="center" style="font-size : 50px; margin-top: 300px;">
-            Select a collection to demo!!
-         </p>
+          <p id="slogan">Select a collection to demo!!</p> 
+          <iframe id="hw_demo" frameborder="0"></iframe>
       </div>
 </body>
 </html>
