@@ -20,21 +20,24 @@
 </style>
 </head>
 <body> 
-  <div id="info"><br/>Planet_model</div>
+  <div id="info"><br/>Planet_model<br/>Press "Enter" to show the box</div>
   <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.4/jquery.min.js"></script>
+  <script src="https://jyunming-chen.github.io/tutsplus/js/KeyboardState.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r74/three.min.js"></script>
   <script src="https://dl.dropboxusercontent.com/u/3587259/Code/Threejs/OrbitControls.js"></script>
   <script language="javascript" type="text/javascript">
     
-     var scene, renderer, camera, controls; 
+     var keyboard = new KeyboardState();
+     var scene, renderer, camera, controls, an_camera; 
      var earth, earthFrame, clock = new THREE.Clock();
 
      init();
      animate();
      function loadPlanets() {
          earthFrame = new THREE.Object3D();
+         THREE.ImageUtils.crossOrigin = '';
          var texture = THREE.ImageUtils.loadTexture('../images/sun.jpg');   
-         var sun = new THREE.Mesh(new THREE.SphereGeometry(10, 32, 32), new THREE.MeshLambertMaterial({
+         var sun = new THREE.Mesh(new THREE.SphereGeometry(15, 32, 32), new THREE.MeshLambertMaterial({
                    map: texture, side: THREE.DoubleSide
          }));
          sun.position.set(0, 15, 0);
@@ -59,40 +62,78 @@
 
          scene = new THREE.Scene();
          camera = new THREE.PerspectiveCamera(45, width / height, 1, 10000);
-         scene.add(camera);
+         an_camera = new THREE.PerspectiveCamera(45, width / height, 1, 5000);
+         an_camera.position.set(5, 16, 15);
          controls = new THREE.OrbitControls(camera, renderer.domElement);
+         scene.add(an_camera);
 
          var gridXZ = new THREE.GridHelper(100, 10);
          gridXZ.setColors(new THREE.Color(0xff0000), new THREE.Color(0xffffff));
          scene.add(gridXZ);
-         //light at the scene
+         //sunlight
          var pointLight = new THREE.PointLight(0xffffff, 25);
          pointLight.position.set(0, 15, 0);
          scene.add(pointLight);
          var ambientLight = new THREE.AmbientLight (0xffffff);
          scene.add(ambientLight);
-         
+         //demo box
+         var myBox = function() {            
+            THREE.ImageUtils.crossOrigin = '';
+            var materials = [];
+            for(var i = 0; i < 6; i++) {    
+                var texture = null; 
+                if( i === 0 )
+                    texture = THREE.ImageUtils.loadTexture('../images/me1.jpg');           
+                else if( i === 1 )
+                    texture = THREE.ImageUtils.loadTexture('../images/me2.jpg');       
+                else if( i === 2 )
+                    texture = THREE.ImageUtils.loadTexture('../images/me3.jpg');
+                else if( i === 3 )
+                    texture = THREE.ImageUtils.loadTexture('../images/me4.jpg');
+                else if( i === 4 )
+                    texture = THREE.ImageUtils.loadTexture('../images/me5.jpg');
+                else if( i === 5 )
+                    texture = THREE.ImageUtils.loadTexture('../images/me6.jpg');
+
+                materials.push( new THREE.MeshLambertMaterial({side:THREE.DoubleSide, map:texture}));
+             }
+             //head 
+             var geometry = new THREE.BoxGeometry(5, 5, 5);
+             var material = new THREE.MeshFaceMaterial( materials );
+             var box = new THREE.Mesh(geometry, material);
+             box.position.set(0, 15, 0);
+             return box;
+         }
+         scene.add( myBox() );
          loadPlanets();
       }
-      function animate() {   
+      function animate() { 
+         this.whichCamera = this.whichCamera || 0;  
          controls.update();
          animate.EarthRevoAngle = ( animate.EarthRevoAngle === undefined ) ? 0 : animate.EarthRevoAngle;
          animate.EarthAngle =  ( animate.EarthAngle  === undefined ) ? 0 : animate.EarthAngle ;
          var dt = clock.getDelta();
-         
-         if( earth !== undefined ) {
+
+         keyboard.update();
+         if ( keyboard.down("enter") ) whichCamera = (whichCamera + 1) % 2;
+         if( earth !== undefined ) {  
              //earth rotation
              animate.EarthAngle += Math.PI / 9 * dt;
              earth.rotation.y = -animate.EarthAngle;
              //earth revoulution rotation
              animate.EarthRevoAngle += Math.PI / 30 * dt;
              earthFrame.rotation.y = animate.EarthRevoAngle;
-             var cameraOffset = earthFrame.localToWorld(new THREE.Vector3(-70, 60, 150));
-             camera.position.copy(cameraOffset);
-             camera.lookAt(earthFrame.position);
+             if( whichCamera == 0 ) {
+                 var cameraOffset = earthFrame.localToWorld(new THREE.Vector3(-70, 60, 150));
+                 camera.position.copy(cameraOffset);
+                 camera.lookAt(earthFrame.position);
+             }
          }
          requestAnimationFrame(animate);
-         renderer.render(scene, camera);
+         if( whichCamera == 0 )
+            renderer.render(scene, camera);
+         else if( whichCamera == 1 )
+            renderer.render(scene, an_camera);
       }
 
   </script>
