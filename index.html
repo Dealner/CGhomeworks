@@ -1,15 +1,14 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-	<meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=0.5 maximum-scale=10.0 minimum-scale=0.5">
+	  <meta charset="UTF-8">
 	  <title>CG HomeWorks</title>
     <link rel="stylesheet" type="text/css" href="css/page_CG_menu_style.css">
     <script type="text/javascript">
 
       var emptyIndex = true; 
-    
-      function goToPage(newPage){
+
+      function goToPage(newPage) {
          if(emptyIndex){
             var slo = document.getElementById("slogan");
             slo.parentNode.removeChild(slo);
@@ -44,7 +43,7 @@
                 </div>
                 <div class="contenedor-general">
                   <div class="logo-interior">
-                    <p><a href="javascript: void(0);" style="text-decoration:none;">
+                    <p><a href="javascript: goToPage('pages/HW4.html');" style="text-decoration:none;">
                         Project_04</a></p>
                   </div>   
                </div>
@@ -58,7 +57,7 @@
       </div>
       <div id="content">
           <p id="slogan">Select a collection to demo!!</p> 
-          <iframe id="hw_demo" frameborder="0"></iframe>
+          <iframe id="hw_demo" frameborder="0" scrolling="no"></iframe>
       </div>
 </body>
 </html>
