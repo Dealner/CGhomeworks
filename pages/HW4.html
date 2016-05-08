@@ -3,6 +3,7 @@
 <head>
 <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1" />
 <title>computer_graphic_HW4</title>
+<link rel="stylesheet" type="text/css" href="../css/page_CG_hw4_sky_style.css">
 <style type="text/css">
 
       #info {
@@ -11,7 +12,8 @@
          width: 100%;
          padding: 10px;
          text-align: center;
-         color: #ffff00
+         color: #ffff00;
+         z-index: 4;
       }
       body {
          overflow: hidden;
@@ -21,6 +23,10 @@
 </head>
 <body> 
   <div id="info"><br/>Planet_model<br/>Press "Enter" to show the box</div>
+  <div class="stars"></div>
+  <div class="twinkling"></div>
+  <div class="clouds"></div>
+  <div id="sky"></div> 
   <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.4/jquery.min.js"></script>
   <script src="https://jyunming-chen.github.io/tutsplus/js/KeyboardState.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r74/three.min.js"></script>
@@ -46,7 +52,7 @@
          loader.load("../models/earth.json", function(object) {
                 earth = object;
                 earth.scale.set (10, 10, 10);
-                earth.position.set(0, 12, 85);
+                earth.position.set(0, 12, 100);
                 earthFrame.add(earth);
                 scene.add( earthFrame );       
          });  
@@ -55,10 +61,10 @@
          var width = window.innerWidth;
          var height = window.innerHeight;
 
-         renderer = new THREE.WebGLRenderer({ antialias: true });
+         renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
          renderer.setSize(width, height);
-         renderer.setClearColor (0x000000);
-         document.body.appendChild(renderer.domElement);
+         renderer.setClearColor (0x000000, 0);
+         document.getElementById('sky').appendChild(renderer.domElement);
 
          scene = new THREE.Scene();
          camera = new THREE.PerspectiveCamera(45, width / height, 1, 10000);
@@ -66,6 +72,7 @@
          an_camera.position.set(5, 16, 15);
          controls = new THREE.OrbitControls(camera, renderer.domElement);
          scene.add(an_camera);
+         scene.add(camera);
 
          var gridXZ = new THREE.GridHelper(100, 10);
          gridXZ.setColors(new THREE.Color(0xff0000), new THREE.Color(0xffffff));
@@ -108,8 +115,8 @@
          loadPlanets();
       }
       function animate() { 
+      	 controls.update();
          this.whichCamera = this.whichCamera || 0;  
-         controls.update();
          animate.EarthRevoAngle = ( animate.EarthRevoAngle === undefined ) ? 0 : animate.EarthRevoAngle;
          animate.EarthAngle =  ( animate.EarthAngle  === undefined ) ? 0 : animate.EarthAngle ;
          var dt = clock.getDelta();
@@ -120,7 +127,7 @@
              //earth rotation
              animate.EarthAngle += Math.PI / 9 * dt;
              earth.rotation.y = -animate.EarthAngle;
-             //earth revoulution rotation
+             //earth revolution rotation
              animate.EarthRevoAngle += Math.PI / 30 * dt;
              earthFrame.rotation.y = animate.EarthRevoAngle;
              if( whichCamera == 0 ) {
