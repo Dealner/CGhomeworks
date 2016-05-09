@@ -6,16 +6,52 @@
     <link rel="stylesheet" type="text/css" href="css/page_CG_menu_style.css">
     <script type="text/javascript">
 
-      var emptyIndex = true; 
+      var SloganVis = true;
 
       function ChangeGifs(url) {
-         if(emptyIndex){
-            var slo = document.getElementById("slogan");
+
+         var whichPage = null;
+
+         if(SloganVis) {
+            var slo = document.getElementById('slogan');
             slo.parentNode.removeChild(slo);
-            emptyIndex = false;
+            SloganVis = false; 
          } 
-         document.getElementById('hw_demo').innerHTML = 
-            "<img src=" + url + " width='100%' height='100%'>";
+         else {
+            var parent = document.getElementById('content');
+            var child = document.getElementById('link');
+            parent.removeChild(child);
+         }
+         //link page
+         switch(url) {
+            case 'gifs/hw1.gif' : 
+                  whichPage = 'pages/HW1.html';
+                  break;
+            case 'gifs/hw2.gif' : 
+                  whichPage = "pages/HW2.html";
+                  break;
+            case 'gifs/hw3.gif' : 
+                  whichPage = "pages/HW3.html";
+                  break;
+            case 'gifs/hw4.gif' : 
+                  whichPage = "pages/HW4.html";
+                  break;
+         }
+         var image =  document.createElement('img');
+         var p = document.createElement('p');
+         var a = document.createElement('a');
+         var text = document.createTextNode("index.html");
+         image.setAttribute('src', url);
+         image.setAttribute('width', '100%');
+         image.setAttribute('height', '95%');
+         p.setAttribute('id', 'link');
+         p.setAttribute('style', 'padding: 5px');
+         p.setAttribute('style', 'text-decoration: none');
+         a.setAttribute('href', whichPage);
+         a.appendChild(text);
+         p.appendChild(a);
+         p.appendChild(image);
+         document.getElementById('content').appendChild(p);
       }
 
     </script>
@@ -56,9 +92,6 @@
                </div>
            </div>
       </div>
-      <div id="content">
-          <p id="slogan">Select a collection to demo!!</p> 
-          <div id="hw_demo"></div>
-      </div>
+      <div id="content"><p id="slogan">Select a collection to demo!!</p></div>
 </body>
 </html>
