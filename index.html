@@ -18,6 +18,7 @@
             SloganVis = false; 
          } 
          else {
+            document.getElementById('content').style.backgroundColor = 'white';
             var parent = document.getElementById('content');
             var child = document.getElementById('link');
             parent.removeChild(child);
@@ -37,20 +38,24 @@
                   whichPage = "pages/HW4.html";
                   break;
          }
+         var a_cssString = 'font-size: 20px; color: lightblue; background-color: dimgray;' +
+                           'border-style: solid; border-radius: 10px; padding: 5px;' + 
+                           'text-decoration: none;';
          var image =  document.createElement('img');
          var p = document.createElement('p');
          var a = document.createElement('a');
-         var text = document.createTextNode("index.html");
+         var text = document.createTextNode("Go to see the demo!!");
          image.setAttribute('src', url);
          image.setAttribute('width', '100%');
-         image.setAttribute('height', '95%');
+         image.setAttribute('height', '100%');
          p.setAttribute('id', 'link');
-         p.setAttribute('style', 'padding: 5px');
-         p.setAttribute('style', 'text-decoration: none');
+         p.setAttribute('align', 'center');
+         a.setAttribute('style', a_cssString);
          a.setAttribute('href', whichPage);
          a.appendChild(text);
          p.appendChild(a);
          p.appendChild(image);
+         document.getElementById('content').style.backgroundColor = 'darkgrey';
          document.getElementById('content').appendChild(p);
       }
 
