@@ -132,7 +132,7 @@
             spotLight.position.set(0, 150, 0);
             spotLight.angle = Math.PI / 2;
             //spotLight.target = jsonModel;
-            spotLight.exponent = 10;
+            spotLight.exponent = 3;
             scene.add(spotLight);
 
             // shadow map settings
@@ -141,9 +141,9 @@
             spotLight.shadowMapHeight = 1024;
             spotLight.shadowCameraNear = 10;
             spotLight.shadowCameraFar = 4000;
-            spotLight.shadowCameraFov = spotLight.angle / Math.PI * 180;
+            spotLight.shadowCameraFov = 90;
             // directional light
-            dLight = new THREE.DirectionalLight(0xffff00);
+            /*dLight = new THREE.DirectionalLight(0xffff00);
             dLight.position.set(200, 100, 0);
             dLight.castShadow = true;
             dLight.shadowCameraLeft = -80;
@@ -155,7 +155,7 @@
             dLight.shadowBias = -.0001
             dLight.shadowMapWidth = dLight.shadowMapHeight = 1024;
             dLight.shadowDarkness = .7;
-            scene.add(dLight);
+            scene.add(dLight);*/
             renderer.shadowMapEnabled = true;
             renderer.shadowMapType = THREE.PCFShadowMap;
 
