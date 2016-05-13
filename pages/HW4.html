@@ -70,6 +70,7 @@
          camera = new THREE.PerspectiveCamera(45, width / height, 1, 10000);
          an_camera = new THREE.PerspectiveCamera(45, width / height, 1, 5000);
          an_camera.position.set(5, 16, 15);
+         camera.position.set(0, 100, 150);
          controls = new THREE.OrbitControls(camera, renderer.domElement);
          scene.add(an_camera);
          scene.add(camera);
