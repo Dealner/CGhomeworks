@@ -1,0 +1,210 @@
+<!DOCTYPE>
+<html>
+<head>
+     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+     <title>computer_graphic_HW6</title>
+     <style type="text/css">
+        body {
+               background-color: #fff;
+               color: #111;
+               margin: 0px;
+               overflow: hidden;
+               font-family: Monospace;
+               font-size: 10px;
+               position: absolute;
+        }
+        #info {
+                position: absolute;
+                top: 3%;
+                width: 100%;
+                padding: 5px;
+                text-align: center;
+                color: #ffff00
+        }
+     </style>
+</head>
+<body> 
+     <div id="info">
+            Homework 6 Helper<br/>
+            GLSL Phong Shading (per-pixel shading)<br/>
+            Transparent ShaderMaterial
+     </div>
+     <script src="http://cdnjs.cloudflare.com/ajax/libs/three.js/r70/three.min.js"></script>
+     <script src="https://dl.dropboxusercontent.com/u/3587259/Code/Threejs/OrbitControls.js"></script>
+     <script id="myVertexShader" type="x-shader/x-vertex">
+         uniform vec3 lightpos;  // world coordinate
+         varying vec3 eyelightdir;
+         varying vec3 eyenormal;
+         varying vec4 eyepos;
+         varying float coeffcient;
+
+         void main() {
+              gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+
+              eyepos = modelViewMatrix * vec4 (position, 1.0);
+              vec4 eyelightpos= viewMatrix * vec4 (lightpos, 1.0);
+              eyelightdir = normalize (eyelightpos.xyz - eyepos.xyz);
+              eyenormal = normalMatrix * normal;
+              //( 1 + (N.L) ) / 2
+              coeffcient =  ( 1.0 + dot( normalize( vec4(eyenormal, 1.0) ), normalize(eyelightpos) ) ) / 2.0;
+         }
+     </script>
+     <script id="myFragmentShader" type="x-shader/x-fragment">
+         varying vec3 eyelightdir;
+         varying vec3 eyenormal;
+         varying vec4 eyepos;
+         uniform float opacity;
+         varying float coeffcient;
+
+         void main() {
+              //Gooch Shading
+              float intensity = dot ( normalize(eyenormal), normalize(eyelightdir) );    
+              vec3 diffuse = intensity * vec3 (1, 1, 1);//k-diffuse , white 
+
+              float alpha = 0.6, beta = 0.4, n_s = 50.0;
+              vec3 k_warm_diff = vec3(0.9, 0.25, 0) + (diffuse * beta);//warm color diffuse
+              vec3 k_cool_diff = vec3(0, 0.27, 0.73) + (diffuse * alpha);//cool color diffuse
+            
+              vec3 k_final = coeffcient * k_cool_diff  + (1.0 - coeffcient) * k_warm_diff;
+
+              vec3 reflec_v = normalize( reflect( -eyepos.xyz, eyenormal ) );//reflec vector : R
+              float specular = pow ( dot ( reflec_v, eyenormal ), n_s);//pow( dot(R,N), n_s )
+
+              gl_FragColor = vec4(k_final + specular * vec3(1, 1, 1), opacity);
+         }
+     </script>
+     <script language="javascript" type="text/javascript">
+          var clock = new THREE.Clock();
+          var raycaster = new THREE.Raycaster();
+          var scene, renderer, camera, controls;
+          var pointLight, lightSphere;
+          var pickables = [];
+          var angle = 0;
+
+          init();
+          animate();
+          //Javascript object
+          var Teapot = function(lValue, teapotMesh) { 
+              this.angle = this.angle || 0.0;
+              this.turn = this.turn || true;
+              this.life_value = this.life_value || lValue;
+              this.mesh = teapotMesh;
+
+              //Teapot.update()
+              Teapot.prototype.update = function() {
+                  if( this.life_value < 0 ) 
+                      this.expire();
+                  else 
+                      this.life_value -= clock.getDelta();                     
+              }
+              //Teapot.expire()
+              Teapot.prototype.expire = function() { 
+                  //this.turn = false;
+                  scene.remove(this.mesh);
+              }
+          }      
+          /*------------------------------------------------------------*/
+          function init() {
+              var width = window.innerWidth;
+              var height = window.innerHeight;
+
+              camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 10000);
+              camera.position.set (0, 160, 400);
+              camera.lookAt(new THREE.Vector3(0, 0, 0));
+
+              renderer = new THREE.WebGLRenderer({ antialias: true });
+              renderer.setSize(width, height);
+              document.addEventListener('mousedown', onDocumentMouseDown, false);
+              document.body.appendChild(renderer.domElement);
+              renderer.setClearColor(0x888888);
+
+              scene = new THREE.Scene();
+              controls = new THREE.OrbitControls(camera, renderer.domElement);
+              //scene objects
+              var ground = new THREE.Mesh (new THREE.PlaneGeometry (200, 200),
+                           new THREE.MeshPhongMaterial({ color:0xff7834 }));
+              scene.add (ground);
+              ground.rotation.x = -Math.PI / 2;
+  
+              var platform = new THREE.Mesh (new THREE.BoxGeometry (50, 10, 80),
+                             new THREE.MeshLambertMaterial({ transparent:true, opacity:0.5 }));
+              platform.position.set (60, 0, 30);
+              var platform2 = platform.clone();
+              platform2.position.set (-60, 0, -30);
+              scene.add (platform2);
+              scene.add (platform);
+
+              pointLight = new THREE.PointLight(0xffffff);
+              scene.add(pointLight);
+              lightSphere = new THREE.Mesh(new THREE.SphereGeometry(5),
+                            new THREE.MeshBasicMaterial({
+                                color: 0xffff00,
+                                wireframe: true
+                            }));
+              scene.add(lightSphere);
+
+              var ambientLight = new THREE.AmbientLight(0x111111);
+              scene.add(ambientLight);
+              /*------------------------------------------------------------*/
+              var teapotMaterial = new THREE.ShaderMaterial({
+                    uniforms: {
+                        lightpos: { type: 'v3', value: new THREE.Vector3() },
+                        opacity: { type: 'f', value: 1.0 }
+                    },
+                    vertexShader: document.getElementById('myVertexShader').textContent,
+                    fragmentShader: document.getElementById('myFragmentShader').textContent
+              });
+              // this is NECESSARY!!
+              teapotMaterial.transparent = true;
+              var jsonLoader = new THREE.JSONLoader();
+              jsonLoader.load("../models/teapot.json", function(geometry, material) {
+                  var teapotMesh = new THREE.Mesh(geometry, teapotMaterial);
+                  teapotMesh.scale.set(5, 5, 5);
+                  var teapotModel = new Teapot(60, teapotMesh);
+                  pickables.push(teapotModel);
+                  scene.add(teapotMesh);
+              });
+              /*var geometry = new THREE.TorusKnotGeometry(20, 5, 100, 16);
+              mesh = new THREE.Mesh(geometry, meshMaterial);
+              scene.add(mesh);*/
+          }
+          function onDocumentMouseDown(event) {
+              //right
+              if(event.which === 3) {
+                 
+              }
+              //left
+              else if(event.which === 1) {
+
+              }
+          }
+          function animate() {
+              controls.update();
+              angle += 0.01;
+              pointLight.position.set(50 * Math.cos(angle), 80, 50 * Math.sin(angle));
+    
+              lightSphere.position.copy(pointLight.position);
+              for(var i = 0; i < pickables.length; i++) {
+                  pickables[i].update();
+                  console.log(pickables[i].life_value);
+                  if( pickables[i].life_value < 0.0 ) {
+                      if( pickables.length == 1 ) pickables[i].update(); //force update again
+                      delete pickables[i];
+                      pickables.splice( i , 1 );                    
+                  }
+                  else if( pickables[i].turn ) {
+                      pickables[i].angle += 0.01;
+                      pickables[i].mesh.rotation.y = -pickables[i].angle;
+                      pickables[i].mesh.material.uniforms.lightpos.value.copy(pointLight.position);
+                      pickables[i].mesh.material.uniforms.opacity.value = Math.abs(Math.sin (angle)); 
+                  }
+                    
+                             
+              }
+              requestAnimationFrame(animate);
+              renderer.render(scene, camera);
+          }
+
+     </script>
+</body>
+</html>
