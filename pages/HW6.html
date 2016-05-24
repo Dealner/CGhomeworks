@@ -15,7 +15,8 @@
         }
         #info {
                 position: absolute;
-                top: 3%;
+                top: 8%;
+                font-size: 25px;
                 width: 100%;
                 padding: 5px;
                 text-align: center;
@@ -24,11 +25,7 @@
      </style>
 </head>
 <body> 
-     <div id="info">
-            Homework 6 Helper<br/>
-            GLSL Phong Shading (per-pixel shading)<br/>
-            Transparent ShaderMaterial
-     </div>
+     <div id="info"></div>
      <script src="http://cdnjs.cloudflare.com/ajax/libs/three.js/r70/three.min.js"></script>
      <script src="https://dl.dropboxusercontent.com/u/3587259/Code/Threejs/OrbitControls.js"></script>
      <script id="myVertexShader" type="x-shader/x-vertex">
@@ -67,19 +64,19 @@
             
               vec3 k_final = coeffcient * k_cool_diff  + (1.0 - coeffcient) * k_warm_diff;
 
-              vec3 reflec_v = normalize( reflect( -eyepos.xyz, eyenormal ) );//reflec vector : R
-              float specular = pow ( dot ( reflec_v, eyenormal ), n_s);//pow( dot(R,N), n_s )
-
-              gl_FragColor = vec4(k_final + specular * vec3(1, 1, 1), opacity);
+              vec3 h = normalize( -normalize(eyepos.xyz) + normalize(eyelightdir) );
+              vec3 specular = pow( dot(eyenormal , h), n_s ) * vec3(1, 1, 1);
+              gl_FragColor = vec4(k_final + specular, opacity);
          }
      </script>
      <script language="javascript" type="text/javascript">
           var clock = new THREE.Clock();
+          var mouse = new THREE.Vector2();
           var raycaster = new THREE.Raycaster();
           var scene, renderer, camera, controls;
           var pointLight, lightSphere;
-          var pickables = [];
-          var angle = 0;
+          var teapotMesh, teapot = [], pickables = [];
+          var angle = 0.0;
 
           init();
           animate();
@@ -92,18 +89,38 @@
 
               //Teapot.update()
               Teapot.prototype.update = function() {
-                  if( this.life_value < 0 ) 
+                  if( this.life_value < 0.0 ) 
                       this.expire();
-                  else 
-                      this.life_value -= clock.getDelta();                     
+                  else {
+                      this.life_value -= clock.getDelta();   
+                      if( this.turn ) this.angle += this.life_value * 0.005 ;
+                      this.mesh.rotation.y = -this.angle;
+                      this.mesh.material.uniforms.lightpos.value.copy(pointLight.position);
+                      this.mesh.material.uniforms.opacity.value = Math.abs( Math.cos( this.angle ) ); 
+                  }
               }
               //Teapot.expire()
               Teapot.prototype.expire = function() { 
-                  //this.turn = false;
                   scene.remove(this.mesh);
+                  var index = findTeapot(this.mesh, false);
+                  // if dispose, all the mesh in the scene will be disappear(clone) 
+                  // teapot[index].mesh.geometry.dispose(); (delete the object the generate by 'new') 
+                  // teapot[index].mesh.material.dispose(); (delete the object the generate by 'new') 
+                  teapot.shift();//remove the teapot
+                  pickables.splice(index + 1, 1);//remove the mesh         
               }
           }      
           /*------------------------------------------------------------*/
+          function findTeapot(mesh, returnObj) {
+	          for (var i = 0; i < teapot.length; i++) {
+  	               if (teapot[i].mesh === mesh) {
+                       if ( returnObj ) 
+  	               	        return teapot[i];   
+  	                   else 
+  	               	        return i;
+  	               }
+	          }
+          }
           function init() {
               var width = window.innerWidth;
               var height = window.innerHeight;
@@ -121,8 +138,9 @@
               scene = new THREE.Scene();
               controls = new THREE.OrbitControls(camera, renderer.domElement);
               //scene objects
-              var ground = new THREE.Mesh (new THREE.PlaneGeometry (200, 200),
+              ground = new THREE.Mesh (new THREE.PlaneGeometry (200, 200),
                            new THREE.MeshPhongMaterial({ color:0xff7834 }));
+              pickables.push(ground);
               scene.add (ground);
               ground.rotation.x = -Math.PI / 2;
   
@@ -136,7 +154,7 @@
 
               pointLight = new THREE.PointLight(0xffffff);
               scene.add(pointLight);
-              lightSphere = new THREE.Mesh(new THREE.SphereGeometry(5),
+              lightSphere = new THREE.Mesh(new THREE.SphereGeometry(3),
                             new THREE.MeshBasicMaterial({
                                 color: 0xffff00,
                                 wireframe: true
@@ -158,49 +176,65 @@
               teapotMaterial.transparent = true;
               var jsonLoader = new THREE.JSONLoader();
               jsonLoader.load("../models/teapot.json", function(geometry, material) {
-                  var teapotMesh = new THREE.Mesh(geometry, teapotMaterial);
+                  teapotMesh = new THREE.Mesh(geometry, teapotMaterial);
                   teapotMesh.scale.set(5, 5, 5);
-                  var teapotModel = new Teapot(60, teapotMesh);
-                  pickables.push(teapotModel);
+                  pickables.push( teapotMesh );
+                  teapot.push( new Teapot(30, teapotMesh) );
                   scene.add(teapotMesh);
               });
-              /*var geometry = new THREE.TorusKnotGeometry(20, 5, 100, 16);
-              mesh = new THREE.Mesh(geometry, meshMaterial);
-              scene.add(mesh);*/
           }
           function onDocumentMouseDown(event) {
               //right
               if(event.which === 3) {
-                 
+                 event.preventDefault();
+                 mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+                 mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+
+                 raycaster.setFromCamera(mouse, camera);
+                 // if recursive set to true, can go deeper into object3D hierarchy 
+                 // var intersects = raycaster.intersectObjects( pickables, true );
+                 // var intersects = raycaster.intersectObjects(pickables);
+	             var intersects = raycaster.intersectObjects(pickables);
+                 if (intersects.length > 0) {  // inside picking plane
+                     var origin = new THREE.Vector3();
+                     origin.copy (intersects[0].point);
+                     origin.y = 30;
+    
+                     raycaster.set (origin, new THREE.Vector3(0, -1, 0));
+                     intersects = raycaster.intersectObjects (scene.children);
+                     if (intersects.length > 0) {
+ 			             var newTeapot = teapotMesh.clone();
+ 			             newTeapot.position.copy (intersects[0].point);
+                         teapot.push( new Teapot(30, newTeapot) );
+                         pickables.push( newTeapot );
+                         scene.add( newTeapot );
+                     }
+                 }
               }
               //left
               else if(event.which === 1) {
+                   event.preventDefault();
+                   mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+                   mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
 
+                   raycaster.setFromCamera(mouse, camera);
+                   var intersects = raycaster.intersectObjects(pickables);
+  	               if (intersects.length > 0) {
+			         // [ { distance, point, face, faceIndex, indices, object }, ... ]
+                       var teapotObj = findTeapot (intersects[0].object, true);
+                       if( teapotObj !== undefined ) teapotObj.turn = !teapotObj.turn;
+                   }
               }
           }
           function animate() {
               controls.update();
               angle += 0.01;
-              pointLight.position.set(50 * Math.cos(angle), 80, 50 * Math.sin(angle));
+              pointLight.position.set(50 * Math.cos(angle), 85, 50 * Math.sin(angle));
     
               lightSphere.position.copy(pointLight.position);
-              for(var i = 0; i < pickables.length; i++) {
-                  pickables[i].update();
-                  console.log(pickables[i].life_value);
-                  if( pickables[i].life_value < 0.0 ) {
-                      if( pickables.length == 1 ) pickables[i].update(); //force update again
-                      delete pickables[i];
-                      pickables.splice( i , 1 );                    
-                  }
-                  else if( pickables[i].turn ) {
-                      pickables[i].angle += 0.01;
-                      pickables[i].mesh.rotation.y = -pickables[i].angle;
-                      pickables[i].mesh.material.uniforms.lightpos.value.copy(pointLight.position);
-                      pickables[i].mesh.material.uniforms.opacity.value = Math.abs(Math.sin (angle)); 
-                  }
-                    
-                             
-              }
+              document.getElementById('info').innerHTML = 'there are '+ teapot.length + ' teapot in the scene.';
+              for(var i = 0; i < teapot.length; i++) teapot[i].update();
+                 
               requestAnimationFrame(animate);
               renderer.render(scene, camera);
           }
