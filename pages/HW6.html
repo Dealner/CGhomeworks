@@ -43,7 +43,7 @@
               eyelightdir = normalize (eyelightpos.xyz - eyepos.xyz);
               eyenormal = normalMatrix * normal;
               //( 1 + (N.L) ) / 2
-              coeffcient =  ( 1.0 + dot( normalize( vec4(eyenormal, 1.0) ), normalize(eyelightpos) ) ) / 2.0;
+              coeffcient =  ( 1.0 + dot( normalize(eyenormal), normalize(eyelightdir) ) ) / 2.0;
          }
      </script>
      <script id="myFragmentShader" type="x-shader/x-fragment">
@@ -55,10 +55,9 @@
 
          void main() {
               //Gooch Shading
-              float intensity = dot ( normalize(eyenormal), normalize(eyelightdir) );    
-              vec3 diffuse = intensity * vec3 (1, 1, 1);//k-diffuse , white 
+              vec3 diffuse = vec3 (1, 1, 1);//k-diffuse , white 
 
-              float alpha = 0.6, beta = 0.4, n_s = 50.0;
+              float alpha = 0.25, beta = 0.5, n_s = 40.0;
               vec3 k_warm_diff = vec3(0.9, 0.25, 0) + (diffuse * beta);//warm color diffuse
               vec3 k_cool_diff = vec3(0, 0.27, 0.73) + (diffuse * alpha);//cool color diffuse
             
@@ -75,13 +74,15 @@
           var raycaster = new THREE.Raycaster();
           var scene, renderer, camera, controls;
           var pointLight, lightSphere;
-          var teapotMesh, teapot = [], pickables = [];
+          var teapotMaterial, teapotGeometry;
+          var teapot = [], pickables = [];
           var angle = 0.0;
 
           init();
           animate();
           //Javascript object
           var Teapot = function(lValue, teapotMesh) { 
+          	  this.alpha = this.alpha || 1.0;
               this.angle = this.angle || 0.0;
               this.turn = this.turn || true;
               this.life_value = this.life_value || lValue;
@@ -91,12 +92,15 @@
               Teapot.prototype.update = function() {
                   if( this.life_value < 0.0 ) 
                       this.expire();
-                  else {
-                      this.life_value -= clock.getDelta();   
-                      if( this.turn ) this.angle += this.life_value * 0.005 ;
+                  else { 
+                      this.life_value -= clock.getDelta(); 
+                      if( this.turn ) {
+                      	  this.angle += this.life_value * 0.005;
+                          this.alpha -= 0.0005;
+                      }
                       this.mesh.rotation.y = -this.angle;
-                      this.mesh.material.uniforms.lightpos.value.copy(pointLight.position);
-                      this.mesh.material.uniforms.opacity.value = Math.abs( Math.cos( this.angle ) ); 
+                      this.mesh.material.uniforms.lightpos.value.copy(pointLight.position);       
+                      this.mesh.material.uniforms.opacity.value = this.alpha;       
                   }
               }
               //Teapot.expire()
@@ -164,7 +168,7 @@
               var ambientLight = new THREE.AmbientLight(0x111111);
               scene.add(ambientLight);
               /*------------------------------------------------------------*/
-              var teapotMaterial = new THREE.ShaderMaterial({
+              teapotMaterial = new THREE.ShaderMaterial({
                     uniforms: {
                         lightpos: { type: 'v3', value: new THREE.Vector3() },
                         opacity: { type: 'f', value: 1.0 }
@@ -176,11 +180,12 @@
               teapotMaterial.transparent = true;
               var jsonLoader = new THREE.JSONLoader();
               jsonLoader.load("../models/teapot.json", function(geometry, material) {
-                  teapotMesh = new THREE.Mesh(geometry, teapotMaterial);
-                  teapotMesh.scale.set(5, 5, 5);
-                  pickables.push( teapotMesh );
-                  teapot.push( new Teapot(30, teapotMesh) );
-                  scene.add(teapotMesh);
+              	  teapotGeometry = geometry;
+                  var mesh = new THREE.Mesh(teapotGeometry, teapotMaterial);
+                  mesh.scale.set(5, 5, 5);
+                  pickables.push( mesh );
+                  teapot.push( new Teapot(30, mesh) );
+                  scene.add(mesh);
               });
           }
           function onDocumentMouseDown(event) {
@@ -203,7 +208,8 @@
                      raycaster.set (origin, new THREE.Vector3(0, -1, 0));
                      intersects = raycaster.intersectObjects (scene.children);
                      if (intersects.length > 0) {
- 			             var newTeapot = teapotMesh.clone();
+ 			             var newTeapot = new THREE.Mesh( teapotGeometry.clone(), teapotMaterial.clone() ); 
+ 			             newTeapot.scale.set(5, 5, 5);
  			             newTeapot.position.copy (intersects[0].point);
                          teapot.push( new Teapot(30, newTeapot) );
                          pickables.push( newTeapot );
