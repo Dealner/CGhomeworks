@@ -62,7 +62,7 @@
               vec3 k_warm_diff = vec3(0.9, 0.25, 0) + (diffuse * beta);//warm color diffuse
               vec3 k_cool_diff = vec3(0, 0.27, 0.73) + (diffuse * alpha);//cool color diffuse
             
-              vec3 k_final = coeffcient * k_cool_diff  + (1.0 - coeffcient) * k_warm_diff;
+              vec3 k_final = coeffcient * k_warm_diff  + (1.0 - coeffcient) * k_cool_diff;
 
               vec3 h = normalize( -normalize(eyepos.xyz) + normalize(eyelightdir) );
               vec3 specular = pow( dot(eyenormal , h), n_s ) * vec3(1, 1, 1);
