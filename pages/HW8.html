@@ -1,0 +1,194 @@
+<!DOCTYPE>
+<html>
+<head>
+     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+     <title>computer_graphic_HW8</title>
+     <style type="text/css">
+        body {
+               background-color: #fff;
+               color: #111;
+               margin: 0px;
+               overflow: hidden;
+               font-family: Monospace;
+               font-size: 10px;
+               position: absolute;
+        }
+        #info {
+               position: absolute;
+               top: 3%;
+               width: 100%;
+               padding: 5px;
+               text-align: center;
+               color: #ffff00
+        }
+     </style>
+</head>
+<body> 
+    <div id="info"></div>  
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r76/three.min.js"></script>
+    <script src="https://dl.dropboxusercontent.com/u/3587259/Code/Threejs/OrbitControls.js"></script>
+    <script src="../js/perlin.js"></script>
+    <script language="javascript" type="text/javascript">
+          var renderer, camera, controls, scene;
+          var lake, plane;
+          var bufferA = [];
+          var bufferB = [];
+          var buffer1, buffer2; // pointers to bufferA & bufferB
+          var stacks = 135;
+          var slices = 135;
+          var mouse = new THREE.Vector2();
+          var raycaster = new THREE.Raycaster();
+
+
+          function initBuffer() {
+               bufferA = new Array(stacks + 1);
+               for (var i = 0; i <= stacks; i++)
+                    bufferA[i] = new Array(slices + 1);
+               bufferB = new Array(stacks + 1);
+               for (var i = 0; i <= stacks; i++)
+                    bufferB[i] = new Array(slices + 1);
+
+               for (var i = 0; i <= stacks; i++) 
+                    for (var j = 0; j <= slices; j++)
+                         bufferB[i][j] = bufferA[i][j] = 0;
+  
+               buffer1 = bufferA;
+               buffer2 = bufferB;
+          }
+          
+          initBuffer();
+          init();
+          animate();
+
+          function loadSkyBox() {
+               var path = '../images/env_map_ex2/';
+               var format = '.png';
+               var urls = [
+                   path + 'right+x' + format, path + 'left-x' + format,
+                   path + 'above+y' + format, path + 'below-y' + format,
+                   path + 'front+z' + format, path + 'behind-z' + format
+               ];
+               var cubeTexture = THREE.ImageUtils.loadTextureCube( urls );
+               cubeTexture.format = THREE.RGBFormat;
+               var shader = THREE.ShaderLib["cube"];
+
+               shader.uniforms['tCube'].value = cubeTexture;
+               
+               var material = new THREE.ShaderMaterial( {
+                   fragmentShader: shader.fragmentShader,
+                   vertexShader: shader.vertexShader,
+                   uniforms: shader.uniforms,
+                   depthWrite: false,
+                   side: THREE.BackSide
+               } );
+               var geometry = new THREE.BoxGeometry(10000, 10000, 10000, 1, 1, 1, null, true);
+               var cube = new THREE.Mesh(geometry, material);
+               scene.add(cube);
+          }
+          function init() {
+               scene = new THREE.Scene();
+               renderer = new THREE.WebGLRenderer({antialias: true});
+               renderer.setSize (window.innerWidth, window.innerHeight);
+               renderer.setClearColor (0x888888);
+               document.body.appendChild (renderer.domElement);
+               window.addEventListener('mousemove', onDocumentMouseMove, false);
+
+               camera = new THREE.PerspectiveCamera (40, window.innerWidth / window.innerHeight, 1, 10000);
+               camera.position.set(0, 200, 300);                
+               controls = new THREE.OrbitControls (camera, renderer.domElement);
+               //Add light
+               var light = new THREE.PointLight(0xffffff);
+               light.position.set(100, 300, 200);
+               scene.add(light);
+               noise.seed(Math.random());
+               //load texture
+               var waterTexture = new THREE.ImageUtils.loadTexture("../images/water-texture.jpg");
+               waterTexture.wrapS = waterTexture.wrapT = THREE.RepeatWrapping;
+               //water
+               var meshFunc = function(u0, v0) {   
+                   //problem       
+                   var x = -100 + 200 * u0;
+                   var z = -100 + 200 * v0;
+                   var y = noise.simplex2(x, z);
+                   return new THREE.Vector3(x, y, z);
+               };
+               var geometry = new THREE.ParametricGeometry(meshFunc, slices, stacks);
+               lake = new THREE.Mesh(geometry, new THREE.MeshLambertMaterial({
+                    side: THREE.BackSide,
+                    map: waterTexture
+               }));
+               scene.add(lake);
+                // build an invisible plane, overlapping the grid
+               plane = new THREE.Mesh(
+                       new THREE.PlaneGeometry(200, 200, 8, 8),
+                       new THREE.MeshBasicMaterial({
+                           opacity: 0.05,
+                           transparent: true
+                       }));
+               plane.rotation.x = -Math.PI / 2;
+               scene.add(plane);
+               //skyBox
+               //loadSkyBox();
+          }      
+          function onDocumentMouseMove(event) {
+               event.preventDefault();
+               mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+               mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+               raycaster.setFromCamera(mouse, camera);
+
+               var intersects = raycaster.intersectObject(plane);
+               if (intersects.length > 0) {
+                   var move = intersects[0].point.clone();
+                   var ii = Math.floor((move.z - (-100)) / (200 / stacks));
+                   var jj = Math.floor((move.x - (-100)) / (200 / slices));
+                   buffer2[ii][jj] = 2;
+               }
+          }
+          function processWater() {
+               if (buffer1 === bufferA) {
+                   buffer1 = bufferB;
+                   buffer2 = bufferA;
+               } else {
+                   buffer1 = bufferA;
+                   buffer2 = bufferB;
+               }
+               // setting buffer1 & buffer2
+               // wave: buffer2 (t-2DT), buffer1 (t-Dt), buffer2 (t)
+               for (var i = 0 + 1; i <= stacks - 1; i++) {
+                    for (var j = 0 + 1; j <= slices - 1; j++) {
+                         var velocity = -buffer2[i][j];
+                         var smoothed = ( buffer1[i - 1][j] + buffer1[i + 1][j] + 
+                                          buffer1[i][j - 1] + buffer1[i][j + 1] ) / 4;
+                         var newHeight = 2 * smoothed + velocity;
+                         newHeight *= 0.951;
+                         buffer2[i][j] = newHeight;
+                    }
+               }
+          }
+          window.onresize = function () {
+               camera.aspect = window.innerWidth / window.innerHeight;
+               camera.updateProjectionMatrix();
+               renderer.setSize (window.innerWidth, window.innerHeight);
+          }
+
+          function animate() {
+               controls.update();
+               processWater();
+                for (var i = 0; i <= stacks; i++) 
+                    for (var j = 0; j <= slices; j++) 
+                         lake.geometry.vertices[i * (stacks + 1) + j].y = 5 * buffer2[i][j];
+                       
+               lake.geometry.computeFaceNormals();
+               lake.geometry.computeVertexNormals();
+               lake.geometry.normalsNeedUpdate = true;
+               lake.geometry.verticesNeedUpdate = true;
+               /*var timer = - new Date().getTime() * 0.0002; 
+               camera.position.x = 50 * Math.cos( timer );
+               camera.position.z = 50 * Math.sin( timer );*/
+ 
+               requestAnimationFrame ( animate );
+               renderer.render (scene, camera);
+          }
+    </script>
+</body>
+</html>
