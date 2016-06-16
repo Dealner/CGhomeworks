@@ -27,15 +27,81 @@
     <div id="info"></div>  
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r76/three.min.js"></script>
     <script src="https://dl.dropboxusercontent.com/u/3587259/Code/Threejs/OrbitControls.js"></script>
-    <script src="../js/perlin.js"></script>
-    <!--script src="../js/mirror.js"></script-->
-    <!--script src="../js/water-material.js"></script-->
+    <script id="VertexShader-Sobel" type="x-shader/x-vertex">
+         varying vec2 vUv;
+
+         void main() { 
+              gl_Position = projectionMatrix* modelViewMatrix * vec4( position, 1.0);
+              vUv = uv; 
+         }
+    </script>
+    <script id="FragmentShader-Sobel" type="x-shader/x-fragment">
+         uniform sampler2D texture; 
+         uniform int mode;
+         uniform int imageSize;
+         varying vec2 vUv; 
+         float step_w = 1.0 / float(imageSize); 
+         float step_h = 1.0 / float(imageSize); 
+
+         void main() { 
+              //Sobel-filter
+              float kernelGx[9];
+              kernelGx[0] = kernelGx[6] = -1.0;
+              kernelGx[2] = kernelGx[8] = +1.0;
+              kernelGx[3] = -2.0;
+              kernelGx[5] = +2.0;
+              kernelGx[1] = kernelGx[4] = kernelGx[7] = 0.0;
+
+              float kernelGy[9]; 
+              kernelGy[0] = kernelGy[2] = -1.0;
+              kernelGy[6] = kernelGy[8] = +1.0;
+              kernelGy[1] = -2.0;
+              kernelGy[7] = +2.0;
+              kernelGy[3] = kernelGy[4] = kernelGy[5] = 0.0;
+              
+              vec2 offset[9];
+              offset[0] = vec2(-step_w, -step_h); 
+              offset[1] = vec2(0.0, -step_h); 
+              offset[2] = vec2(step_w, -step_h);
+              offset[3] = vec2(-step_w, 0.0);
+              offset[4] = vec2(0.0, 0.0);
+              offset[5] = vec2(step_w, 0.0); 
+              offset[6] = vec2(-step_w, step_h);
+              offset[7] = vec2(0.0, step_h);
+              offset[8] = vec2(step_w, step_h); 
+
+              vec3 sumGx = vec3(0.0);
+              vec3 sumGy = vec3(0.0);
+              //Sum of texture and kernels product         
+              for (int i = 0; i < 9; i++) { 
+                   sumGx += texture2D(texture, vUv + offset[i]).rgb * kernelGx[i]; 
+                   sumGy += texture2D(texture, vUv + offset[i]).rgb * kernelGy[i]; 
+              } 
+              if( mode == 1 ) {
+                  //Sobel result
+                  vec3 final_G = sqrt( pow(sumGx, vec3(2.0) ) + pow(sumGy, vec3(2.0) ) );
+                  gl_FragColor = vec4 ( vec3(final_G.r + final_G.g + final_G.b) / 3.0, 1.0 ); 
+              }
+              else if( mode == 2 ) {
+                  //normal map
+                  vec3 d_x = vec3(1.0, 0.0, (sumGx.r + sumGx.g + sumGx.b) / 3.0); 
+                  vec3 d_y = vec3(0.0, 1.0, (sumGy.r + sumGy.g + sumGy.b) / 3.0);
+                  
+                  vec3 xCrossy = cross(d_x, d_y);
+                  vec3 Normal = xCrossy / length(xCrossy);
+                  gl_FragColor = vec4 ( ( Normal + 1.0 ) / 2.0, 1.0 ); 
+              }             
+         }
+    </script>
     <script language="javascript" type="text/javascript">
-          var renderer, camera, controls, scene;
+          var face_material, mode = 1;
+          var faceTexture = [], faceScene = [],  faceCamera = [];
+          var renderer, mainCamera, controls, mainScene;
           var lake, plane;
           var bufferA = [];
           var bufferB = [];
           var buffer1, buffer2; // pointers to bufferA & bufferB
+          var imageSize = 256;  
           var stacks = 135;
           var slices = 135;
           var mouse = new THREE.Vector2();
@@ -63,14 +129,41 @@
           animate();
 
           function loadSkyBox() {
+               var textLoader = new THREE.TextureLoader();        
+               var face_geometry = new THREE.PlaneGeometry(imageSize, imageSize, 8, 8);
+               face_material = new THREE.ShaderMaterial({
+                    uniforms: {
+                        mode: { type: 'i', value: mode },
+                        texture: { type: 't', value: null } ,
+                        imageSize: { type: 'i', value: imageSize }
+                    },
+                    vertexShader: document.getElementById('VertexShader-Sobel').textContent,
+                    fragmentShader: document.getElementById('FragmentShader-Sobel').textContent
+               });
+               face_material.side = THREE.BackSide;
                var path = '../images/env_map_ex2/';
                var format = '.png';
-               var urls = [
-                   path + 'right+x' + format, path + 'left-x' + format,
-                   path + 'above+y' + format, path + 'below-y' + format,
-                   path + 'front+z' + format, path + 'behind-z' + format
-               ];
-               var cubeTexture = THREE.ImageUtils.loadTextureCube( urls );
+               for(var i = 0; i < 6; i++) {    
+                   var texture = null; 
+                   if( i === 0 )          
+                       texture = textLoader.load(path + 'right+x' + format);                       
+                   else if( i === 1 )
+                       texture = textLoader.load(path + 'left-x'+ format);                    
+                   else if( i === 2 )
+                       texture = textLoader.load(path + 'above+y' + format);    
+                   else if( i === 3 )
+                       texture = textLoader.load(path + 'below-y' + format);    
+                   else if( i === 4 )
+                       texture = textLoader.load(path + 'front+z' + format);    
+                   else if( i === 5 )
+                       texture = textLoader.load(path + 'behind-z' + format);  
+
+                   face_material.uniforms.texture.value = texture;
+                   var face = new THREE.Mesh(face_geometry, face_material);
+                   face.rotation.x = -Math.PI / 2;
+                   faceScene[i].add(face);
+               }
+               var cubeTexture = THREE.ImageUtils.loadTextureCube( faceTexture );
                cubeTexture.format = THREE.RGBFormat;
                var shader = THREE.ShaderLib["cube"];
 
@@ -85,56 +178,53 @@
                } );
                var geometry = new THREE.BoxGeometry(10000, 10000, 10000, 1, 1, 1, null, true);
                var cube = new THREE.Mesh(geometry, material);
-               scene.add(cube);
+               mainScene.add(cube);
           }
           function init() {
-               scene = new THREE.Scene();
+               mainScene = new THREE.Scene();
                renderer = new THREE.WebGLRenderer({antialias: true});
                renderer.setSize (window.innerWidth, window.innerHeight);
                renderer.setClearColor (0x888888);
+               renderer.autoClear = false;
                document.body.appendChild (renderer.domElement);
                window.addEventListener('mousemove', onDocumentMouseMove, false);
 
-               camera = new THREE.PerspectiveCamera (40, window.innerWidth / window.innerHeight, 1, 10000);
-               camera.position.set(0, 100, 300);                
-               controls = new THREE.OrbitControls (camera, renderer.domElement);
-               //Add light
-               /*scene.add( new THREE.AmbientLight( 0xff0000 ) );
-               var light = new THREE.DirectionalLight( 0xffffff, 1 );
-               light.position.set(0, 200, 0);
-               scene.add( light );*/
+               mainCamera = new THREE.PerspectiveCamera (40, window.innerWidth / window.innerHeight, 1, 10000);
+               mainCamera.position.set(0, 100, 300);                
+               controls = new THREE.OrbitControls (mainCamera, renderer.domElement);
+               //prepare for render the face of Box
+               for(var i = 0; i < 6; i++) {
+                   var newScene = new THREE.Scene();
+                   var rtTexture = new THREE.WebGLRenderTarget( imageSize, imageSize, {
+                               minFilter: THREE.LinearFilter, 
+                               magFilter: THREE.NearestFilter, 
+                               format: THREE.RGBFormat 
+                       });
+                   var newCamera = mainCamera.clone();
+                   faceTexture.push(rtTexture);
+                   faceScene.push(newScene);
+                   faceCamera.push(newCamera);
+               }
                var light = new THREE.PointLight(0xffffff);
                light.position.set(100, 300, 200);
-               scene.add(light);
-               noise.seed(Math.random());
+               mainScene.add(light);
                //load texture
                var waterTexture = new THREE.ImageUtils.loadTexture("../images/water-texture.jpg");
                waterTexture.wrapS = waterTexture.wrapT = THREE.RepeatWrapping;
-               //water
-               /*water = new THREE.Water( renderer, camera, scene, {
-                   textureWidth: 256,
-                   textureHeight: 256,
-                   waterNormals: waterTexture,
-                   alpha:  1.0,
-                   sunDirection: light.position.clone().normalize(),
-                   sunColor: 0xffffff,
-                   waterColor: 0x23f0ff,
-                   distortionScale: 50.0,
-                   side: THREE.DoubleSide
-               } );*/
+
                var meshFunc = function(u0, v0) {   
                    //problem       
                    var x = -150 + 300 * u0;
                    var z = -150 + 300 * v0;
-                   //var y = noise.simplex2(x, z);
+
                    return new THREE.Vector3(x, 0, z);
                };
                var geometry = new THREE.ParametricGeometry(meshFunc, slices, stacks);
-               lake = new THREE.Mesh(geometry, /*water.material*/new THREE.MeshLambertMaterial({
-                    side: THREE.BackSide,
+               lake = new THREE.Mesh(geometry, new THREE.MeshLambertMaterial({
+                    side: THREE.DoubleSide,
                     map: waterTexture
                }));
-               scene.add(lake);
+               mainScene.add(lake);
                // build an invisible plane, overlapping the grid
                plane = new THREE.Mesh(
                        new THREE.PlaneGeometry(200, 200, 8, 8),
@@ -143,7 +233,7 @@
                            transparent: true
                        }));
                plane.rotation.x = -Math.PI / 2;
-               scene.add(plane);
+               mainScene.add(plane);
                //skyBox
                //loadSkyBox();
           }      
@@ -151,7 +241,7 @@
                event.preventDefault();
                mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
                mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
-               raycaster.setFromCamera(mouse, camera);
+               raycaster.setFromCamera(mouse, mainCamera);
 
                var intersects = raycaster.intersectObject(plane);
                if (intersects.length > 0) {
@@ -183,15 +273,13 @@
                }
           }
           window.onresize = function () {
-               camera.aspect = window.innerWidth / window.innerHeight;
-               camera.updateProjectionMatrix();
+               mainCamera.aspect = window.innerWidth / window.innerHeight;
+               mainCamera.updateProjectionMatrix();
                renderer.setSize (window.innerWidth, window.innerHeight);
           }
 
           function animate() {
                controls.update();
-               //water.material.uniforms.time.value += 1.0 / 60.0;
-               //water.render();
                processWater();
                 for (var i = 0; i <= stacks; i++) 
                     for (var j = 0; j <= slices; j++) 
@@ -203,9 +291,16 @@
                lake.geometry.verticesNeedUpdate = true;
                /*var timer = - new Date().getTime() * 0.0002; 
                camera.position.x = 50 * Math.cos( timer );
-               camera.position.z = 50 * Math.sin( timer );*/  
+               camera.position.z = 50 * Math.sin( timer );*/ 
+
+               //render the RenderTargetTexture
+               renderer.clear(); 
+               for(var i = 0; i < 6; i++) {
+                   renderer.setClearColor (0xffffff);
+                   renderer.render (faceScene[i], faceCamera[i], faceTexture[i], true);
+               }
                requestAnimationFrame ( animate );
-               renderer.render (scene, camera);
+               renderer.render (mainScene, mainCamera);           
           }
     </script>
 </body>
