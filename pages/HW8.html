@@ -104,6 +104,7 @@
           var imageSize = 256;  
           var stacks = 135;
           var slices = 135;
+          var textLoader = new THREE.TextureLoader();     
           var mouse = new THREE.Vector2();
           var raycaster = new THREE.Raycaster();
 
@@ -128,8 +129,7 @@
           init();
           animate();
 
-          function loadSkyBox() {
-               var textLoader = new THREE.TextureLoader();        
+          function loadSkyBox() {               
                var face_geometry = new THREE.PlaneGeometry(imageSize, imageSize, 8, 8);
                face_material = new THREE.ShaderMaterial({
                     uniforms: {
@@ -160,14 +160,14 @@
 
                    face_material.uniforms.texture.value = texture;
                    var face = new THREE.Mesh(face_geometry, face_material);
-                   face.rotation.x = -Math.PI / 2;
+                   //face.rotation.x = -Math.PI / 2;
                    faceScene[i].add(face);
                }
-               var cubeTexture = THREE.ImageUtils.loadTextureCube( faceTexture );
-               cubeTexture.format = THREE.RGBFormat;
+               //var cubeTexture = THREE.ImageUtils.loadTextureCube( faceTexture );
+               //cubeTexture.format = THREE.RGBFormat;
                var shader = THREE.ShaderLib["cube"];
 
-               shader.uniforms['tCube'].value = cubeTexture;
+               shader.uniforms['tCube'].value = faceTexture;
                
                var material = new THREE.ShaderMaterial( {
                    fragmentShader: shader.fragmentShader,
@@ -209,7 +209,7 @@
                light.position.set(100, 300, 200);
                mainScene.add(light);
                //load texture
-               var waterTexture = new THREE.ImageUtils.loadTexture("../images/water-texture.jpg");
+               var waterTexture = textLoader.load("../images/water-texture.jpg");
                waterTexture.wrapS = waterTexture.wrapT = THREE.RepeatWrapping;
 
                var meshFunc = function(u0, v0) {   
@@ -235,7 +235,7 @@
                plane.rotation.x = -Math.PI / 2;
                mainScene.add(plane);
                //skyBox
-               //loadSkyBox();
+               loadSkyBox();
           }      
           function onDocumentMouseMove(event) {
                event.preventDefault();
