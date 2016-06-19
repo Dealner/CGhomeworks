@@ -208,9 +208,9 @@
                      raycaster.set (origin, new THREE.Vector3(0, -1, 0));
                      intersects = raycaster.intersectObjects (scene.children);
                      if (intersects.length > 0) {
- 			             var newTeapot = new THREE.Mesh( teapotGeometry.clone(), teapotMaterial.clone() ); 
- 			             newTeapot.scale.set(5, 5, 5);
- 			             newTeapot.position.copy (intersects[0].point);
+ 			                   var newTeapot = new THREE.Mesh( teapotGeometry.clone(), teapotMaterial.clone() ); 
+ 			                   newTeapot.scale.set(5, 5, 5);
+ 			                   newTeapot.position.copy (intersects[0].point);
                          teapot.push( new Teapot(30, newTeapot) );
                          pickables.push( newTeapot );
                          scene.add( newTeapot );

@@ -24,9 +24,150 @@
      </style>
 </head>
 <body> 
-    <div id="info"></div>  
+    <div id="info">       
+        <p id = "title">
+           Final Project<br/>
+           presss " Enter " to change the scene<br/>
+        </p>
+        <audio src="../audio/Music.mp3" autoplay></audio>
+    </div>  
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r76/three.min.js"></script>
+    <script src="https://jyunming-chen.github.io/tutsplus/js/KeyboardState.js"></script>
     <script src="https://dl.dropboxusercontent.com/u/3587259/Code/Threejs/OrbitControls.js"></script>
+    <script id='VertexShader-perlin' type="x-shader/x-vertex">
+         varying vec4 wPos;
+         varying vec2 vUv;
+         uniform vec2 scale;
+         uniform vec2 offset;
+
+         void main() {
+              vUv = uv * scale + offset;
+              wPos = modelMatrix * vec4(position, 1.0);
+              gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+         }    
+    </script>
+    <script id='FragmentShader-perlin' type="x-shader/x-vertex">      
+         // FROM: http://jsfiddle.net/jmchen/cby3d1ag/    
+         vec3 mod289(vec3 x) {
+              return x - floor(x * (1.0 / 289.0)) * 289.0;
+         }
+         vec4 mod289(vec4 x) {
+              return x - floor(x * (1.0 / 289.0)) * 289.0;
+         }
+         vec4 permute(vec4 x) {
+              return mod289(((x * 34.0) + 1.0) * x);
+         }
+         vec4 taylorInvSqrt(vec4 r) {
+              return 1.79284291400159 - 0.85373472095314 * r;
+         }
+         float snoise(vec3 v) {
+              const vec2 C = vec2(1.0 / 6.0, 1.0 / 3.0);
+              const vec4 D = vec4(0.0, 0.5, 1.0, 2.0);
+
+              // First corner
+              vec3 i = floor( v + dot(v, C.yyy) );
+              vec3 x0 = v - i + dot( i, C.xxx );
+
+              // Other corners
+              vec3 g = step(x0.yzx, x0.xyz);
+              vec3 l = 1.0 - g;
+              vec3 i1 = min(g.xyz, l.zxy);
+              vec3 i2 = max(g.xyz, l.zxy);
+
+              vec3 x1 = x0 - i1 + C.xxx;
+              vec3 x2 = x0 - i2 + C.yyy; // 2.0*C.x = 1/3 = C.y
+              vec3 x3 = x0 - D.yyy; // -1.0+3.0*C.x = -0.5 = -D.y
+
+              // Permutations
+              i = mod289(i);
+              vec4 p = permute( permute ( permute (i.z + vec4(0.0, i1.z, i2.z, 1.0) ) +
+                       i.y + vec4(0.0, i1.y, i2.y, 1.0) ) + i.x + vec4(0.0, i1.x, i2.x, 1.0) );
+
+              // Gradients: 7x7 points over a square, mapped onto an octahedron.
+              // The ring size 17 * 17 = 289 is close to a multiple of 49 (49 * 6 = 294)
+              float n_ = 0.142857142857; // 1.0/7.0
+              vec3 ns = n_ * D.wyz - D.xzx;
+
+              vec4 j = p - 49.0 * floor(p * ns.z * ns.z); //  mod(p,7*7)
+
+              vec4 x_ = floor(j * ns.z);
+              vec4 y_ = floor(j - 7.0 * x_); // mod(j,N)
+
+              vec4 x = x_ * ns.x + ns.yyyy;
+              vec4 y = y_ * ns.x + ns.yyyy;
+              vec4 h = 1.0 - abs(x) - abs(y);
+
+              vec4 b0 = vec4(x.xy, y.xy);
+              vec4 b1 = vec4(x.zw, y.zw);
+
+              vec4 s0 = floor(b0) * 2.0 + 1.0;
+              vec4 s1 = floor(b1) * 2.0 + 1.0;
+              vec4 sh = -step(h, vec4(0.0));
+
+              vec4 a0 = b0.xzyw + s0.xzyw * sh.xxyy;
+              vec4 a1 = b1.xzyw + s1.xzyw * sh.zzww;
+
+              vec3 p0 = vec3(a0.xy, h.x);
+              vec3 p1 = vec3(a0.zw, h.y);
+              vec3 p2 = vec3(a1.xy, h.z);
+              vec3 p3 = vec3(a1.zw, h.w);
+
+              //Normalise gradients
+              vec4 norm = taylorInvSqrt( vec4( dot(p0, p0), dot(p1, p1), dot(p2, p2), dot(p3, p3) ) );
+              p0 *= norm.x;
+              p1 *= norm.y;
+              p2 *= norm.z;
+              p3 *= norm.w;
+
+              // Mix final noise value
+              vec4 m = max( 0.6 - vec4(dot(x0, x0), dot(x1, x1), dot(x2, x2), dot(x3, x3)), 0.0 );
+              m = m * m;
+              return 42.0 * dot( m * m, vec4( dot(p0, x0), dot(p1, x1), dot(p2, x2), dot(p3, x3) ) );
+         }
+         uniform sampler2D texture;
+         uniform int terms;
+         uniform vec3 wLightPos;
+         uniform float time;
+         varying vec2 vUv;
+         varying vec4 wPos;
+    
+         float surface3(vec3 coord) {
+               float height = 0.0;
+               height += abs(snoise(coord)) * 1.0;
+               if (terms >= 2)    
+                   height += abs(snoise(coord * 2.0)) * 0.5;
+               if (terms >= 3)
+                   height += abs(snoise(coord * 4.0)) * 0.25;
+               if (terms >= 4)
+                   height += abs(snoise(coord * 8.0)) * 0.125;
+               // can add more terms ...
+               if (terms >= 5)   
+                   height += abs(snoise(coord * 16.0)) * 0.0625;
+
+               return abs( sin( 1. / height ) );
+         }
+         void main(void) {
+              float scale = 1.0;
+              vec3 coord = vec3(scale * wPos.xyz);//vUv[0], scale * vUv[1], time);
+              float height = surface3(coord);
+
+              float eps = 0.01;
+              vec3 coordUU = vec3(scale * vUv[0] + eps, scale * vUv[1], time);
+              float hUU = surface3(coordUU);
+              vec3 coordVV = vec3(scale * vUv[0], scale * vUv[1] + eps, time);
+              float hVV = surface3(coordVV);
+
+              vec3 uu = normalize(vec3(15. * eps, 0, hUU - height));
+              vec3 vv = normalize(vec3(0, 15. * eps, hVV - height));
+              vec3 nn = normalize(cross(uu, vv));
+
+              vec3 wL = normalize(wLightPos - wPos.xyz);
+              float ndotl = dot(wL, nn);
+
+              vec3 newText = vec3( texture2D(texture, vUv).xy * ndotl *0.5, ndotl ); 
+              gl_FragColor = vec4(newText, 1.0);
+         }
+    </script>
     <script id="VertexShader-Sobel" type="x-shader/x-vertex">
          varying vec2 vUv;
 
@@ -94,16 +235,16 @@
          }
     </script>
     <script language="javascript" type="text/javascript">
-          var face_material, mode = 1;
-          var faceTexture = [], faceScene = [],  faceCamera = [];
-          var renderer, mainCamera, controls, mainScene;
+          var light = [], particle = [];
+          var renderer, mainCamera, controls, mainScene, cubeCamera, dLight;
           var lake, plane;
           var bufferA = [];
           var bufferB = [];
           var buffer1, buffer2; // pointers to bufferA & bufferB
-          var imageSize = 256;  
-          var stacks = 135;
-          var slices = 135;
+          var imageSize = 512; 
+          var stacks = 135, slices = 135; 
+          var keyboard = new KeyboardState();
+          var clock = new THREE.Clock();
           var textLoader = new THREE.TextureLoader();     
           var mouse = new THREE.Vector2();
           var raycaster = new THREE.Raycaster();
@@ -128,114 +269,130 @@
           initBuffer();
           init();
           animate();
-
-          function loadSkyBox() {               
-               var face_geometry = new THREE.PlaneGeometry(imageSize, imageSize, 8, 8);
-               face_material = new THREE.ShaderMaterial({
-                    uniforms: {
-                        mode: { type: 'i', value: mode },
-                        texture: { type: 't', value: null } ,
-                        imageSize: { type: 'i', value: imageSize }
-                    },
-                    vertexShader: document.getElementById('VertexShader-Sobel').textContent,
-                    fragmentShader: document.getElementById('FragmentShader-Sobel').textContent
-               });
-               face_material.side = THREE.BackSide;
-               var path = '../images/env_map_ex2/';
+          //particle object
+          function loadSkyBox(mode) {  
+               //console.log('mode is '+mode);
+               this.skyBox = this.skyBox || null;
+               var face_materials = [];               
+               var path = '../images/env_map_ex2/'
                var format = '.png';
-               for(var i = 0; i < 6; i++) {    
-                   var texture = null; 
-                   if( i === 0 )          
-                       texture = textLoader.load(path + 'right+x' + format);                       
-                   else if( i === 1 )
-                       texture = textLoader.load(path + 'left-x'+ format);                    
-                   else if( i === 2 )
-                       texture = textLoader.load(path + 'above+y' + format);    
-                   else if( i === 3 )
-                       texture = textLoader.load(path + 'below-y' + format);    
-                   else if( i === 4 )
-                       texture = textLoader.load(path + 'front+z' + format);    
-                   else if( i === 5 )
-                       texture = textLoader.load(path + 'behind-z' + format);  
-
-                   face_material.uniforms.texture.value = texture;
-                   var face = new THREE.Mesh(face_geometry, face_material);
-                   //face.rotation.x = -Math.PI / 2;
-                   faceScene[i].add(face);
+               for(var i = 0; i < 6; i++) { 
+                   var texture = null;
+                   if( i === 0 ) 
+                       texture = textLoader.load(path + 'right+x' + format);   
+                   else if( i === 1 ) 
+                       texture = textLoader.load(path + 'left-x'+ format);                          
+                   else if( i === 2 ) 
+                       texture = textLoader.load(path + 'above+y' + format);                
+                   else if( i === 3 ) 
+                       texture = textLoader.load(path + 'below-y' + format);              
+                   else if( i === 4 ) 
+                       texture = textLoader.load(path + 'front+z' + format);           
+                   else if( i === 5 ) 
+                       texture = textLoader.load(path + 'behind-z' + format); 
+                   
+                   if( mode === 0 ) {
+                       //origin cube map
+                       var material = new THREE.MeshLambertMaterial({map: texture});
+                       material.side = THREE.BackSide;
+                       face_materials.push(material);
+                   }
+                   else {
+                       //sobel cube map(1) or normal map(2)   
+                       var material = new THREE.ShaderMaterial({
+                             uniforms: {
+                                 mode: { type: 'i', value: mode },
+                                 texture: { type: 't', value: texture } ,
+                                 imageSize: { type: 'i', value: imageSize }
+                             },
+                             vertexShader: document.getElementById('VertexShader-Sobel').textContent,
+                             fragmentShader: document.getElementById('FragmentShader-Sobel').textContent
+                       });
+                       material.side = THREE.BackSide;
+                       face_materials.push(material); 
+                   }
                }
-               //var cubeTexture = THREE.ImageUtils.loadTextureCube( faceTexture );
-               //cubeTexture.format = THREE.RGBFormat;
-               var shader = THREE.ShaderLib["cube"];
-
-               shader.uniforms['tCube'].value = faceTexture;
-               
-               var material = new THREE.ShaderMaterial( {
-                   fragmentShader: shader.fragmentShader,
-                   vertexShader: shader.vertexShader,
-                   uniforms: shader.uniforms,
-                   depthWrite: false,
-                   side: THREE.BackSide
-               } );
-               var geometry = new THREE.BoxGeometry(10000, 10000, 10000, 1, 1, 1, null, true);
-               var cube = new THREE.Mesh(geometry, material);
-               mainScene.add(cube);
+               var bGeometry = new THREE.BoxGeometry(imageSize, imageSize, imageSize);
+               var bMaterial = new THREE.MeshFaceMaterial( face_materials );
+               if( this.skyBox !== null ) {
+                   this.skyBox.geometry.dispose();
+                   this.skyBox.material = null;
+                   mainScene.remove(this.skyBox);
+               }
+               this.skyBox = new THREE.Mesh(bGeometry, bMaterial);
+               mainScene.add(this.skyBox);
           }
           function init() {
                mainScene = new THREE.Scene();
                renderer = new THREE.WebGLRenderer({antialias: true});
                renderer.setSize (window.innerWidth, window.innerHeight);
                renderer.setClearColor (0x888888);
-               renderer.autoClear = false;
+               renderer.shadowMapEnabled = true;
+               renderer.shadowMapType = THREE.PCFShadowMap;
                document.body.appendChild (renderer.domElement);
                window.addEventListener('mousemove', onDocumentMouseMove, false);
-
-               mainCamera = new THREE.PerspectiveCamera (40, window.innerWidth / window.innerHeight, 1, 10000);
-               mainCamera.position.set(0, 100, 300);                
+               //camera
+               mainCamera = new THREE.PerspectiveCamera (50, window.innerWidth / window.innerHeight, 1, 10000);
+               mainCamera.position.set(0, 200, 350);   
+               cubeCamera = new THREE.CubeCamera( 1, 10000, imageSize );
+               cubeCamera.renderTarget.texture.minFilter = THREE.LinearMipMapLinearFilter;
+               mainScene.add( cubeCamera );  
+               mainScene.add( mainCamera ); 
+               //control
                controls = new THREE.OrbitControls (mainCamera, renderer.domElement);
-               //prepare for render the face of Box
-               for(var i = 0; i < 6; i++) {
-                   var newScene = new THREE.Scene();
-                   var rtTexture = new THREE.WebGLRenderTarget( imageSize, imageSize, {
-                               minFilter: THREE.LinearFilter, 
-                               magFilter: THREE.NearestFilter, 
-                               format: THREE.RGBFormat 
-                       });
-                   var newCamera = mainCamera.clone();
-                   faceTexture.push(rtTexture);
-                   faceScene.push(newScene);
-                   faceCamera.push(newCamera);
+               //scene light(directional light considering....)
+               mainScene.add( new THREE.AmbientLight(0xffffff, 0.5) );   
+               //skyBox
+               loadSkyBox(0);
+               //particle field  
+               var sGeometry = new THREE.SphereGeometry(5, 32, 32);
+               var sMaterial = new THREE.MeshPhongMaterial({color: 0xffffff, envMap: cubeCamera.renderTarget});
+               for(var i = 0; i < 50; i++) {
+                   var pointLight = new THREE.PointLight(0xffffff, 1);
+                   var pm = new THREE.Mesh(sGeometry, sMaterial);
+                   pm.position.x = Math.random() * imageSize * 0.94- imageSize / 2;
+                   pm.position.y = Math.random() * imageSize * 0.94 - imageSize / 2;
+                   pm.position.z = Math.random() * imageSize * 0.94 - imageSize / 2;
+                   pointLight.position.x = Math.random() * imageSize * 0.94- imageSize / 2;
+                   pointLight.position.y = Math.random() * imageSize * 0.94 - imageSize / 2;
+                   pointLight.position.z = Math.random() * imageSize * 0.94 - imageSize / 2;
+                   light.push(pointLight);
+                   particle.push(pm); 
+                 
+                   mainScene.add(pm);
+                   mainScene.add(pointLight);
                }
-               var light = new THREE.PointLight(0xffffff);
-               light.position.set(100, 300, 200);
-               mainScene.add(light);
-               //load texture
+               //lake
                var waterTexture = textLoader.load("../images/water-texture.jpg");
                waterTexture.wrapS = waterTexture.wrapT = THREE.RepeatWrapping;
-
                var meshFunc = function(u0, v0) {   
-                   //problem       
-                   var x = -150 + 300 * u0;
-                   var z = -150 + 300 * v0;
-
-                   return new THREE.Vector3(x, 0, z);
+                   return new THREE.Vector3(-150 + 300 * u0, 0, -150 + 300 * v0);
                };
-               var geometry = new THREE.ParametricGeometry(meshFunc, slices, stacks);
-               lake = new THREE.Mesh(geometry, new THREE.MeshLambertMaterial({
-                    side: THREE.DoubleSide,
-                    map: waterTexture
-               }));
+               var wGeometry = new THREE.ParametricGeometry(meshFunc, slices, stacks);
+               var wMaterial = new THREE.ShaderMaterial ({
+                   uniforms: {
+                      terms: { type: 'i', value: 5 },
+                      texture: { type: 't', value: waterTexture } ,
+                      time: { type: 'f', value: 1.0 },
+                      scale: { type: 'v2', value: new THREE.Vector2(-10, -10) },
+                      offset: { type: 'v2', value: new THREE.Vector2(0, 0) },
+                      wLightPos: { type: 'v3', value: new THREE.Vector3() }
+                   },
+                   vertexShader: document.getElementById('VertexShader-perlin').textContent,
+                   fragmentShader: document.getElementById('FragmentShader-perlin').textContent
+               });
+               wMaterial.side = THREE.DoubleSide;
+               lake = new THREE.Mesh(wGeometry, wMaterial);
                mainScene.add(lake);
                // build an invisible plane, overlapping the grid
                plane = new THREE.Mesh(
-                       new THREE.PlaneGeometry(200, 200, 8, 8),
+                       new THREE.PlaneGeometry(300, 300, 10, 10),
                        new THREE.MeshBasicMaterial({
                            opacity: 0.05,
                            transparent: true
                        }));
                plane.rotation.x = -Math.PI / 2;
-               mainScene.add(plane);
-               //skyBox
-               loadSkyBox();
+               mainScene.add(plane);        
           }      
           function onDocumentMouseMove(event) {
                event.preventDefault();
@@ -246,8 +403,8 @@
                var intersects = raycaster.intersectObject(plane);
                if (intersects.length > 0) {
                    var move = intersects[0].point.clone();
-                   var ii = Math.floor((move.z - (-100)) / (200 / stacks));
-                   var jj = Math.floor((move.x - (-100)) / (200 / slices));
+                   var ii = Math.floor((move.z - (-150)) / (300 / stacks));
+                   var jj = Math.floor((move.x - (-150)) / (300 / slices));
                    buffer2[ii][jj] = 2;
                }
           }
@@ -280,6 +437,19 @@
 
           function animate() {
                controls.update();
+               keyboard.update();
+               this.cameraRadius = this.cameraRadius || 0;
+               this.whichMode = this.whichMode || 0;            
+               if ( keyboard.down("enter") ) {
+                    if( whichMode < 2 )
+                        whichMode++;
+                    else
+                        whichMode = 0;
+
+                    loadSkyBox(whichMode);//change the scene
+               }
+               var delta = clock.getDelta();
+               this.cameraRadius += 0.02;
                processWater();
                 for (var i = 0; i <= stacks; i++) 
                     for (var j = 0; j <= slices; j++) 
@@ -289,18 +459,39 @@
                lake.geometry.computeVertexNormals();
                lake.geometry.normalsNeedUpdate = true;
                lake.geometry.verticesNeedUpdate = true;
-               /*var timer = - new Date().getTime() * 0.0002; 
-               camera.position.x = 50 * Math.cos( timer );
-               camera.position.z = 50 * Math.sin( timer );*/ 
-
-               //render the RenderTargetTexture
-               renderer.clear(); 
-               for(var i = 0; i < 6; i++) {
-                   renderer.setClearColor (0xffffff);
-                   renderer.render (faceScene[i], faceCamera[i], faceTexture[i], true);
-               }
+             
+               for(var i = 0; i < 50; i++) {
+                   var timer = 0.0001 * Date.now();
+                   particle[i].position.x = 200 * Math.cos( timer + i );
+                   particle[i].position.y = 200 * Math.sin( timer + i * 1.1 );        
+                   particle[i].material.transparent = true;
+                   particle[i].material.opacity = 1.0;               
+                   light[i].position.copy(particle[i].position);
+                   if( whichMode === 1 ) {
+                       light[i].color.setHex(0x9aff02);
+                       light[i].intensity = 0.5;
+                   }
+                   else if( whichMode === 2 ){
+                       light[i].color.setHex(0xffffff);
+                       light[i].intensity = 0.5;
+                   }
+                   else {
+                       light[i].color.setHex(0xffffff);
+                       light[i].intensity = 0.1;
+                   }
+                   lake.material.uniforms.wLightPos.value.copy(light[i].position);
+                   cubeCamera.position.copy( particle[i].position );
+                   cubeCamera.updateCubeMap( renderer, mainScene );
+               }                            
+               lake.material.uniforms["time"].value += delta / 15;
+               lake.material.uniforms["offset"].value.x += delta / 10;
+               lake.material.uniforms["offset"].value.y += delta / 10;
+               
+               mainCamera.lookAt(lake.position);
+               mainCamera.position.x = 320 * Math.cos(this.cameraRadius);
+               mainCamera.position.z = 320 * Math.sin(this.cameraRadius);
                requestAnimationFrame ( animate );
-               renderer.render (mainScene, mainCamera);           
+               renderer.render( mainScene, mainCamera );
           }
     </script>
 </body>
