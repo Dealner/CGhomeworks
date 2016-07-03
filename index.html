@@ -17,56 +17,8 @@
             slo.parentNode.removeChild(slo);
             SloganVis = false; 
          } 
-         else {
-            document.getElementById('content').style.backgroundColor = 'white';
-            var parent = document.getElementById('content');
-            var child = document.getElementById('link');
-            parent.removeChild(child);
-         }
-         //link page
-         switch(url) {
-            case 'gifs/hw1.gif' : 
-                  whichPage = 'pages/HW1.html';
-                  break;
-            case 'gifs/hw2.gif' : 
-                  whichPage = "pages/HW2.html";
-                  break;
-            case 'gifs/hw3.gif' : 
-                  whichPage = "pages/HW3.html";
-                  break;
-            case 'gifs/hw4.gif' : 
-                  whichPage = "pages/HW4.html";
-                  break;
-            case 'gifs/hw5.gif' :
-                  whichPage = "pages/HW5.html"
-            case 'gifs/hw6.gif' :
-                  whichPage = "pages/HW6.html"
-            case 'gifs/hw7.gif' :
-                  whichPage = "pages/HW7.html"
-            case 'gifs/hw8.gif' :
-                  whichPage = "pages/HW8.html"  
-         }
-         var a_cssString = 'font-size: 20px; color: lightblue; background-color: dimgray;' +
-                           'border-style: solid; border-radius: 10px; padding: 5px;' + 
-                           'text-decoration: none;';
-         var image =  document.createElement('img');
-         var p = document.createElement('p');
-         var a = document.createElement('a');
-         var text = document.createTextNode("Go to see the demo!!");
-         image.setAttribute('src', url);
-         image.setAttribute('style', 'margin-top: 1%;');
-         image.setAttribute('width', '100%');
-         image.setAttribute('height', '95%');
-         p.setAttribute('id', 'link');
-         p.setAttribute('style', 'margin-top: 1%;');
-         p.setAttribute('align', 'center');
-         a.setAttribute('style', a_cssString);
-         a.setAttribute('href', whichPage);
-         a.appendChild(text);
-         p.appendChild(a);
-         p.appendChild(image);
-         document.getElementById('content').style.backgroundColor = 'darkgrey';
-         document.getElementById('content').appendChild(p);
+         var page = '<object style="width: 100%; height: 100%" type="text/html" data="' + url + '" ></object>';
+         document.getElementById("content").innerHTML = page;
       }
 
     </script>
@@ -77,49 +29,49 @@
            <div id="contenedor-general-frame">
                 <div class="contenedor-general">
                   <div class="logo-interior">
-                    <p><a href="javascript: reloadPage('gifs/hw1.gif');" style="text-decoration:none;">
+                    <p><a href="javascript: reloadPage('pages/HW1.html');" style="text-decoration:none;">
                         Project_01</a></p>
                   </div> 
                 </div>
                 <div class="contenedor-general">
                   <div class="logo-interior">
-                    <p><a href="javascript: reloadPage('gifs/hw2.gif');" style="text-decoration:none;">
+                    <p><a href="javascript: reloadPage('pages/HW2.html');" style="text-decoration:none;">
                         Project_02</a></p>
                   </div>
                 </div>
                 <div class="contenedor-general">
                   <div class="logo-interior">
-                    <p><a href="javascript: reloadPage('gifs/hw3.gif');" style="text-decoration:none;">
+                    <p><a href="javascript: reloadPage('pages/HW3.html');" style="text-decoration:none;">
                         Project_03</a></p>
                   </div>
                 </div>
                 <div class="contenedor-general">
                   <div class="logo-interior">
-                    <p><a href="javascript: reloadPage('gifs/hw4.gif');" style="text-decoration:none;">
+                    <p><a href="javascript: reloadPage('pages/HW4.html');" style="text-decoration:none;">
                         Project_04</a></p>
                   </div>   
                </div>
                <div class="contenedor-general">
                   <div class="logo-interior">
-                    <p><a href="javascript: reloadPage('gifs/hw5.gif');" style="text-decoration:none;">
+                    <p><a href="javascript: reloadPage('pages/HW5.html');" style="text-decoration:none;">
                         Project_05</a></p>
                   </div>
                </div>
                <div class="contenedor-general">
                   <div class="logo-interior">
-                    <p><a href="javascript: reloadPage('gifs/hw6.gif');" style="text-decoration:none;">
+                    <p><a href="javascript: reloadPage('pages/HW6.html');" style="text-decoration:none;">
                         Project_06</a></p>
                   </div>
                </div>
                <div class="contenedor-general">
                   <div class="logo-interior">
-                    <p><a href="javascript: reloadPage('gifs/hw7.gif');" style="text-decoration:none;">
+                    <p><a href="javascript: reloadPage('pages/HW7.html');" style="text-decoration:none;">
                         Project_07</a></p>
                   </div>
                </div>
                <div class="contenedor-general">
                   <div class="logo-interior">
-                    <p><a href="javascript: reloadPage('gifs/hw8.gif');" style="text-decoration:none;">
+                    <p><a href="javascript: reloadPage('pages/HW8.html');" style="text-decoration:none;">
                         Project_08</a></p>
                   </div>
                </div>
